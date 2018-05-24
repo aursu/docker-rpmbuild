@@ -15,6 +15,12 @@ services:
     build:
       context: webrepo
     image: rpmbuild:webrepo
+  createrepo:
+    volumes:
+      - rpm7:/home/centos/rpmbuild/RPMS
+    build:
+      context: createrepo
+    image: rpmbuild:createrepo
 
 volumes:
   rpm6:
