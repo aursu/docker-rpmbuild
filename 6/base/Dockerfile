@@ -13,5 +13,5 @@ RUN groupadd -g 48 $buildgroup \
     && useradd -u 48 -g $buildgroup -d $BUILD_HOME -k /dev/null -m $BUILD_USER
 
 # create rpmbuild structure for user root
-RUN mkdir -p ${BUILD_TOPDIR}/{RPMS,SOURCES,SPECS,SRPMS} &&
-    chown -R centos:centos ${BUILD_TOPDIR}/{RPMS,SOURCES,SPECS,SRPMS}
+RUN mkdir -p ${BUILD_TOPDIR}/{RPMS,SOURCES,SPECS,SRPMS} \
+    && chown -R centos:centos ${BUILD_TOPDIR}/{RPMS,SOURCES,SPECS,SRPMS}
