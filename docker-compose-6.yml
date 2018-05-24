@@ -1,0 +1,21 @@
+version: "3"
+services:
+  base:
+    build:
+      context: 6/base
+    image: rpmbuild:6-base
+  rpmbuild:
+    build:
+      context: 6/build
+    image: rpmbuild:6-build
+  webrepo:
+    volumes:
+      - rpm6:/home/centos-6/rpmbuild/RPMS
+      - rpm7:/home/centos-7/rpmbuild/RPMS
+    build:
+      context: webrepo
+    image: rpmbuild:webrepo
+
+volumes:
+  rpm6:
+  rpm7:
