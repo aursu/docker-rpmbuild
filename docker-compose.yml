@@ -1,6 +1,6 @@
 version: "3.4"
 services:
-  base:
+  centos6base:
     build:
       context: 6/base
     image: rpmbuild:6-base
@@ -8,10 +8,26 @@ services:
     build:
       context: 7/base
     image: rpmbuild:7-base
-  rpmbuild:
+  centos6build:
     build:
       context: 6/build
     image: rpmbuild:6-build
+  centos7build:
+    build:
+      context: 7/build
+    image: rpmbuild:7-build
+  centos6repo:
+    volumes:
+      - rpm6:/home/centos/rpmbuild/RPMS
+    build:
+      context: createrepo
+    image: rpmbuild:createrepo
+  centos7repo:
+    volumes:
+      - rpm7:/home/centos/rpmbuild/RPMS
+    build:
+      context: createrepo
+    image: rpmbuild:createrepo
   webrepo:
     volumes:
       - rpm6:/home/centos-6/rpmbuild/RPMS
@@ -19,12 +35,6 @@ services:
     build:
       context: webrepo
     image: rpmbuild:webrepo
-  createrepo:
-    volumes:
-      - rpm6:/home/centos/rpmbuild/RPMS
-    build:
-      context: createrepo
-    image: rpmbuild:createrepo
 
 volumes:
   rpm6:
