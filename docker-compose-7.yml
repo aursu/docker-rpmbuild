@@ -1,4 +1,4 @@
-version: "3"
+version: "3.4"
 services:
   base:
     build:
@@ -24,4 +24,6 @@ services:
 
 volumes:
   rpm6:
+    name: rpm6
   rpm7:
+    name: rpm7

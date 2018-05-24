@@ -1,9 +1,13 @@
-version: "3"
+version: "3.4"
 services:
   base:
     build:
       context: 6/base
     image: rpmbuild:6-base
+  centos7base:
+    build:
+      context: 7/base
+    image: rpmbuild:7-base
   rpmbuild:
     build:
       context: 6/build
@@ -24,4 +28,6 @@ services:
 
 volumes:
   rpm6:
+    name: rpm6
   rpm7:
+    name: rpm7
