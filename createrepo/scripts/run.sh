@@ -10,9 +10,9 @@ if ! test $DELAY_PERIOD -gt 0 2>/dev/null; then
 fi
 
 # check if any modified packages during last half day
-if find . -mtime -12 -name *.rpm | grep -q rpm; then
+if find . -mmin -720 -name *.rpm | grep -q rpm; then
     /usr/bin/createrepo .
-    find . -name *.rpm -mtime -12 -exec touch -d yesterday {} \;
+    find . -name *.rpm -mmin -720 -exec touch -d yesterday {} \;
 fi
 
 if ! test -d repodata; then
