@@ -15,4 +15,8 @@ if find . -mtime -12 -name *.rpm | grep -q rpm; then
     find . -name *.rpm -mtime -12 -exec touch -d yesterday {} \;
 fi
 
+if ! test -d repodata; then
+    /usr/bin/createrepo .
+fi
+
 sleep $DELAY_PERIOD
