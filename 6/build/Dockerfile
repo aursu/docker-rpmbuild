@@ -16,6 +16,7 @@ RUN yum -y install \
         gcc-c++ \
         libtool \
         make \
+        which \
     && yum clean all && rm -rf /var/cache/yum
 
 VOLUME ${BUILD_TOPDIR}/SRPMS ${BUILD_TOPDIR}/RPMS
