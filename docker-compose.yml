@@ -23,6 +23,8 @@ services:
     build:
       context: createrepo
     image: rpmbuild:createrepo
+    environment:
+      - DELAY_PERIOD=60
   centos7repo:
     restart: always
     volumes:
@@ -30,6 +32,8 @@ services:
     build:
       context: createrepo
     image: rpmbuild:createrepo
+    environment:
+      - DELAY_PERIOD=60
   webrepo:
     networks:
       - buildnet
