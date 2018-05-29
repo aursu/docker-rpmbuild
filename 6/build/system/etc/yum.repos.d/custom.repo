@@ -1,0 +1,6 @@
+[custom]
+name=CentOS-$releasever - Custom
+# we use automatic service discovery inside Docker user-defined bridge networks
+# https://docs.docker.com/network/network-tutorial-standalone/#use-user-defined-bridge-networks
+baseurl=http://webrepo/centos/$releasever/custom
+gpgcheck=0
