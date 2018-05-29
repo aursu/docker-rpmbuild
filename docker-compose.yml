@@ -17,18 +17,22 @@ services:
       context: 7/build
     image: rpmbuild:7-build
   centos6repo:
+    restart: always
     volumes:
       - rpm6:/home/centos/rpmbuild/RPMS
     build:
       context: createrepo
     image: rpmbuild:createrepo
   centos7repo:
+    restart: always
     volumes:
       - rpm7:/home/centos/rpmbuild/RPMS
     build:
       context: createrepo
     image: rpmbuild:createrepo
   webrepo:
+    networks:
+      - buildnet
     volumes:
       - rpm6:/home/centos-6/rpmbuild/RPMS
       - rpm7:/home/centos-7/rpmbuild/RPMS
@@ -41,3 +45,7 @@ volumes:
     name: rpm6
   rpm7:
     name: rpm7
+
+networks:
+  buildnet:
+    name: buildnet
