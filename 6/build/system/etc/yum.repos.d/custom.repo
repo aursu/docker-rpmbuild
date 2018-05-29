@@ -4,3 +4,4 @@ name=CentOS-$releasever - Custom
 # https://docs.docker.com/network/network-tutorial-standalone/#use-user-defined-bridge-networks
 baseurl=http://webrepo/centos/$releasever/custom
 gpgcheck=0
+enabled=0
