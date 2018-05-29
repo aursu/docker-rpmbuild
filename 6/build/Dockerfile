@@ -7,6 +7,8 @@ RUN yum -y install \
         epel-rpm-macros \
     && yum clean all && rm -rf /var/cache/yum
 
+COPY system/etc/yum.repos.d/custom.repo /etc/yum.repos.d/custom.repo
+
 # install common build tools (autotools, compilers, parsers etc)
 RUN yum -y install \
         autoconf \
