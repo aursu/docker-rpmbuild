@@ -1,4 +1,4 @@
-FROM rpmbuild:6-base
+FROM aursu/rpmbuild:6-base
 
 # install RPM build tools and assets
 RUN yum -y install \

@@ -1,4 +1,4 @@
-FROM centos:7-scm
+FROM aursu/centos:7-scm
 
 ARG builduser=centos
 ARG buildgroup=centos
@@ -14,4 +14,4 @@ RUN groupadd -g 48 $buildgroup \
 
 # create rpmbuild structure for user root
 RUN mkdir -p ${BUILD_TOPDIR}/{RPMS,SOURCES,SPECS,SRPMS} \
-    && chown -R centos:centos ${BUILD_TOPDIR}
+    && chown -R $BUILD_USER:$buildgroup ${BUILD_TOPDIR}

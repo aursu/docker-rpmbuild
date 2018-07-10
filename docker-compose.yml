@@ -3,26 +3,26 @@ services:
   centos6base:
     build:
       context: 6/base
-    image: rpmbuild:6-base
+    image: aursu/rpmbuild:6-base
   centos7base:
     build:
       context: 7/base
-    image: rpmbuild:7-base
+    image: aursu/rpmbuild:7-base
   centos6build:
     build:
       context: 6/build
-    image: rpmbuild:6-build
+    image: aursu/rpmbuild:6-build
   centos7build:
     build:
       context: 7/build
-    image: rpmbuild:7-build
+    image: aursu/rpmbuild:7-build
   centos6repo:
     restart: always
     volumes:
       - rpm6:/home/centos/rpmbuild/RPMS
     build:
       context: createrepo
-    image: rpmbuild:createrepo
+    image: aursu/rpmbuild:createrepo
     environment:
       - DELAY_PERIOD=60
   centos7repo:
@@ -31,7 +31,7 @@ services:
       - rpm7:/home/centos/rpmbuild/RPMS
     build:
       context: createrepo
-    image: rpmbuild:createrepo
+    image: aursu/rpmbuild:createrepo
     environment:
       - DELAY_PERIOD=60
   webrepo:
@@ -42,7 +42,7 @@ services:
       - rpm7:/home/centos-7/rpmbuild/RPMS
     build:
       context: webrepo
-    image: rpmbuild:webrepo
+    image: aursu/rpmbuild:webrepo
     ports:
       - "80:80"
 

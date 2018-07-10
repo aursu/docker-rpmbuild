@@ -1,4 +1,4 @@
-FROM rpmbuild:7-base
+FROM aursu/rpmbuild:7-base
 
 # sleep for DELAY_PERIOD seconds
 ENV DELAY_PERIOD 60
