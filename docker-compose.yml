@@ -24,7 +24,7 @@ services:
       context: createrepo
     image: aursu/rpmbuild:createrepo
     environment:
-      - DELAY_PERIOD=60
+      - DELAY_PERIOD=30
   centos7repo:
     restart: always
     volumes:
@@ -33,7 +33,7 @@ services:
       context: createrepo
     image: aursu/rpmbuild:createrepo
     environment:
-      - DELAY_PERIOD=60
+      - DELAY_PERIOD=30
   webrepo:
     networks:
       - buildnet
