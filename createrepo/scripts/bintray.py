@@ -294,6 +294,7 @@ class Bintray(object):
                     'X-Bintray-Package': self.package.name(),
                     'X-Bintray-Version': self.package.version(),
                     'X-Bintray-Publish': '1',
+                    'X-Bintray-Override': '1',
                 })
                 resp = self.send(reqobj, method='PUT')
                 if resp.getcode() == 201:
