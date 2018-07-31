@@ -7,5 +7,4 @@ VOLUME ${BUILD_TOPDIR}/RPMS
 
 USER $BUILD_USER
 
-ENTRYPOINT ["/usr/local/bin/bintray.py", "${BUILD_TOPDIR}/RPMS"]
-CMD ["-c"]
+CMD /usr/local/bin/bintray.py ${BUILD_TOPDIR}/RPMS
