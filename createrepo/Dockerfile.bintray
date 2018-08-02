@@ -7,4 +7,4 @@ VOLUME ${BUILD_TOPDIR}/RPMS
 
 USER $BUILD_USER
 
-CMD /usr/local/bin/bintray.py ${BUILD_TOPDIR}/RPMS
+CMD /usr/local/bin/bintray.py -c ${BUILD_TOPDIR}/RPMS
