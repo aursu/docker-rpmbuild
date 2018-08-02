@@ -293,10 +293,17 @@ class Bintray(object):
                     'Content-Length': self.package.size(),
                     'X-Bintray-Package': self.package.name(),
                     'X-Bintray-Version': self.package.version(),
-                    'X-Bintray-Publish': '1',
-                    'X-Bintray-Override': '1',
+                    'X-Checksum-Sha2': self.package.sha256sum(),
+                    'X-Bintray-Publish': '1'
                 })
-                resp = self.send(reqobj, method='PUT')
+                try:
+                    resp = self.send(reqobj, method='PUT')
+                except urllib2.HTTPError, e:
+                    # conflict, package already exists
+                    if e.getcode() == 409:
+                        errorprint("Conflict: %s" % e.read())
+                        return False
+                    raise e
                 if resp.getcode() == 201:
                     self.update_stats()
                     return True
