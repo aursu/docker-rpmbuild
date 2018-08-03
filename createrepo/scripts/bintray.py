@@ -159,6 +159,8 @@ class Bintray(object):
         return req
 
     def send(self, req, data = None, method = None):
+        # we try to relogin only once
+        attempts = 2
         # check if request is urllib2.Request
         if isinstance(req, basestring):
             req = urllib2.Request(req)
@@ -171,16 +173,22 @@ class Bintray(object):
         # add POST data if provided
         if data:
             req.add_data(data)
-        try:
-            return self.curl.open(req)
-        except urllib2.HTTPError, e:
-            if debugmode:
-                errorprint("URL: %s" % req.get_full_url())
-                errorprint("Method: %s" % req.get_method())
-                errorprint("Request Headers: %s" % req.header_items())
-                errorprint("Error Message: %s" % str(e))
-                errorprint("Error Headers: %s" % e.hdrs)
-            raise e
+        while attempts:
+            try:
+                return self.curl.open(req)
+            except urllib2.HTTPError, e:
+                if debugmode:
+                    errorprint("URL: %s" % req.get_full_url())
+                    errorprint("Method: %s" % req.get_method())
+                    errorprint("Request Headers: %s" % req.header_items())
+                    errorprint("Error Message: %s" % str(e))
+                    errorprint("Error Headers: %s" % e.hdrs)
+                if e.getcode() == 401:
+                    self.set_curl()
+                    attempts -= 1
+                    continue
+                raise e
+            break
 
     def set_curl(self):
         self.curl = urllib2.build_opener()
@@ -299,11 +307,11 @@ class Bintray(object):
                 try:
                     resp = self.send(reqobj, method='PUT')
                 except urllib2.HTTPError, e:
-                    rawmsg = e.read()
-                    if debugmode:
-                        errorprint("Error: %s" % rawmsg)
                     # conflict, package already exists
                     if e.getcode() == 409:
+                        rawmsg = e.read()
+                        if debugmode:
+                            errorprint("Error: %s" % rawmsg)
                         msg = json.loads(rawmsg)
                         if "message" in msg:
                             msg = msg["message"]
