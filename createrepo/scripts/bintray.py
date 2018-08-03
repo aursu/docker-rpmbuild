@@ -171,17 +171,15 @@ class Bintray(object):
         # add POST data if provided
         if data:
             req.add_data(data)
-        if debugmode:
-            errorprint("URL: %s" % req.get_full_url())
-            errorprint("Method: %s" % req.get_method())
-            errorprint("Request Headers: %s" % req.header_items())
         try:
             return self.curl.open(req)
         except urllib2.HTTPError, e:
             if debugmode:
+                errorprint("URL: %s" % req.get_full_url())
+                errorprint("Method: %s" % req.get_method())
+                errorprint("Request Headers: %s" % req.header_items())
                 errorprint("Error Message: %s" % str(e))
                 errorprint("Error Headers: %s" % e.hdrs)
-                errorprint("Error: %s" % e.read())
             raise e
 
     def set_curl(self):
@@ -227,11 +225,13 @@ class Bintray(object):
                 resp = self.send(req)
             except urllib2.HTTPError, e:
                 if e.code == 404:
+                    if debugmode:
+                        errorprint("Error: %s" % e.read())
                     # package was not found
                     return None
                 raise e
             if resp.getcode() == 200:
-                return json.loads(resp.read())
+                return json.load(resp)
         return None
 
     def check_package_exists(self):
@@ -299,9 +299,15 @@ class Bintray(object):
                 try:
                     resp = self.send(reqobj, method='PUT')
                 except urllib2.HTTPError, e:
+                    rawmsg = e.read()
+                    if debugmode:
+                        errorprint("Error: %s" % rawmsg)
                     # conflict, package already exists
                     if e.getcode() == 409:
-                        errorprint("Conflict: %s" % e.read())
+                        msg = json.loads(rawmsg)
+                        if "message" in msg:
+                            msg = msg["message"]
+                        errorprint("Conflict: %s" % msg)
                         return False
                     raise e
                 if resp.getcode() == 201:
