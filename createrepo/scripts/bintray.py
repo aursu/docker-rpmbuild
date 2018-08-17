@@ -354,7 +354,7 @@ class Bintray(object):
         verfiles = filter(lambda x: x['version'] == self.package.version(), distfiles)
         cleanup = []
         if len(verfiles) > 2:
-            cleanup = verfiles[-2:]
+            cleanup = verfiles[:-2]
         status = False
         for p in cleanup:
             if self.delete_content(p['path']):
