@@ -344,7 +344,6 @@ class Bintray(object):
 
     # not more than 2 packages (hardcoded) of the same version in repo
     def cleanup_packages(self):
-        self.update_stats()
         if not self.files:
             return None
         # filter by distribution
@@ -355,7 +354,7 @@ class Bintray(object):
         verfiles = filter(lambda x: x['version'] == self.package.version(), distfiles)
         cleanup = []
         if len(verfiles) > 2:
-            cleanup = verfiles[:-2]
+            cleanup = verfiles[-2:]
         status = False
         for p in cleanup:
             if self.delete_content(p['path']):
