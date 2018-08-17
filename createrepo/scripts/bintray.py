@@ -344,6 +344,7 @@ class Bintray(object):
 
     # not more than 2 packages (hardcoded) of the same version in repo
     def cleanup_packages(self):
+        self.update_stats()
         if not self.files:
             return None
         # filter by distribution
