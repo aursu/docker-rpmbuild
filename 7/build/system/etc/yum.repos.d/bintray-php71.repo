@@ -1,0 +1,8 @@
+# bintray-php71 - packages byaursu from Bintray
+[bintray-php71]
+name=bintray-php71
+baseurl=https://dl.bintray.com/aursu/custom/centos/$releasever/
+gpgcheck=0
+repo_gpgcheck=0
+enabled=0
+sslverify=0
