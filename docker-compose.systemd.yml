@@ -1,0 +1,12 @@
+version: "3.5"
+services:
+  centos7basesystemd:
+    build:
+      context: 7/base
+      dockerfile: Dockerfile.systemd
+    image: aursu/rpmbuild:7-base-systemd
+  centos7buildsystemd:
+    build:
+      context: 7/build
+      dockerfile: Dockerfile.systemd
+    image: aursu/rpmbuild:7-build-systemd
