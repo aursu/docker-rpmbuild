@@ -8,6 +8,11 @@ services:
     build:
       context: 7/base
     image: aursu/rpmbuild:7-base
+  centos7basesystemd:
+    build:
+      context: 7/base
+      dockerfile: Dockerfile.systemd
+    image: aursu/rpmbuild:7-base-systemd
   centos6build:
     build:
       context: 6/build
@@ -16,6 +21,11 @@ services:
     build:
       context: 7/build
     image: aursu/rpmbuild:7-build
+  centos7buildsystemd:
+    build:
+      context: 7/build
+      dockerfile: Dockerfile.systemd
+    image: aursu/rpmbuild:7-build-systemd
   centos6repo:
     restart: always
     volumes:
