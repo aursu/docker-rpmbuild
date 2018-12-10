@@ -10,3 +10,19 @@ services:
       context: 7/build
       dockerfile: Dockerfile.systemd
     image: aursu/rpmbuild:7-build-systemd
+  centos7buildtest:
+    networks:
+      - buildnet
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    tmpfs:
+      - /run
+    image: aursu/rpmbuild:7-build-systemd
+
+networks:
+  buildnet:
+    name: buildnet
