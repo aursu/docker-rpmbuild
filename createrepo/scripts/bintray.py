@@ -309,7 +309,10 @@ class Bintray(object):
                 except urllib2.HTTPError, e:
                     # conflict, package already exists
                     if e.getcode() == 409:
-                        rawmsg = e.read()
+                        try:
+                            rawmsg = e.read()
+                        except httplib.IncompleteRead as e:
+                            rawmsg = e.partial
                         if debugmode:
                             errorprint("Error: %s" % rawmsg)
                         msg = json.loads(rawmsg)
