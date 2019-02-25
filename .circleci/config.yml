@@ -1,0 +1,39 @@
+version: 2
+jobs:
+  build:
+    machine:
+      docker_layer_caching: true
+    steps:
+      - run:
+          name: Upgrade Docker CE
+          command: |
+            sudo apt-get update
+            sudo apt-get install docker-ce=18.03.1~ce-0~ubuntu
+      - run:
+          name: Upgrade Docker Compose
+          command: |
+            sudo curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+      - checkout
+      - run:
+          name: Build RPM-build Docker images
+          command: |
+            docker-compose build --pull --no-cache centos6base centos7base
+            docker-compose build --no-cache centos6build centos7build centos7repo webrepo
+            docker-compose -f docker-compose.systemd.yml build --no-cache centos7basesystemd
+            docker-compose -f docker-compose.systemd.yml build --no-cache centos7buildsystemd
+      - run:
+          name: Deploy RPM-build Docker images
+          command: |
+            docker login -u $DOCKER_USER -p $DOCKER_PASS
+            docker push aursu/rpmbuild:6-base
+            docker push aursu/rpmbuild:7-base
+            docker push aursu/rpmbuild:6-build
+            docker push aursu/rpmbuild:7-build
+            docker push aursu/rpmbuild:createrepo
+            docker push aursu/rpmbuild:webrepo
+      - run:
+          name: Build RPM-build systemd images
+          command: |
+            docker push aursu/rpmbuild:7-base-systemd
+            docker push aursu/rpmbuild:7-build-systemd
