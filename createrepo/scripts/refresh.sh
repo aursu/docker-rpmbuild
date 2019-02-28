@@ -5,4 +5,7 @@ if [ -z "$REFRESH_ACTION" ]; then
 fi
 
 [[ "$REFRESH_ACTION" == "cleanup" ]] && find . -name *.rpm -delete
-[ -d repodata ] && rm -rf repodata
+[ -d repodata ] && {
+    rm -rf repodata
+    /usr/bin/createrepo .
+}
