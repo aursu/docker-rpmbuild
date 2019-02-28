@@ -17,6 +17,7 @@ import rpm
 import rpmUtils, rpmUtils.transaction
 from distutils.version import LooseVersion
 from optparse import OptionParser
+import httplib
 import urllib2
 import json
 import hashlib
