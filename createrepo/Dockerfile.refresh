@@ -1,13 +1,3 @@
-FROM aursu/rpmbuild:7-base
-
-ENV REFRESH_ACTION=refresh
-
-COPY scripts/refresh.sh /usr/local/bin/refresh.sh
-RUN chmod 755 /usr/local/bin/refresh.sh
-
-VOLUME ${BUILD_TOPDIR}/RPMS
-
-USER $BUILD_USER
-WORKDIR ${BUILD_TOPDIR}/RPMS
+FROM aursu/rpmbuild:createrepo
 
 CMD /usr/local/bin/refresh.sh

@@ -1,14 +1,16 @@
 FROM aursu/rpmbuild:7-base
 
-# sleep for DELAY_PERIOD seconds
-ENV DELAY_PERIOD 60
-
 RUN yum -y install \
 		createrepo \
 	&& yum clean all && rm -rf /var/cache/yum
 
+# sleep for DELAY_PERIOD seconds
+ENV DELAY_PERIOD 60
+ENV REFRESH_ACTION=refresh
+
 COPY scripts/run.sh /usr/local/bin/run.sh
-RUN chmod 755 /usr/local/bin/run.sh
+COPY scripts/refresh.sh /usr/local/bin/refresh.sh
+RUN chmod 755 /usr/local/bin/run.sh /usr/local/bin/refresh.sh
 
 VOLUME ${BUILD_TOPDIR}/RPMS
 
