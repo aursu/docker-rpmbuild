@@ -1,4 +1,8 @@
 #!/bin/bash
 
-[[ "$1" == "cleanup" ]] && find . -name *.rpm -delete
+if [ -z "$REFRESH_ACTION" ]; then
+    REFRESH_ACTION=refresh
+fi
+
+[[ "$REFRESH_ACTION" == "cleanup" ]] && find . -name *.rpm -delete
 [ -d repodata ] && rm -rf repodata

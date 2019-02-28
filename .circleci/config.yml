@@ -23,6 +23,7 @@ jobs:
             docker-compose -f docker-compose.systemd.yml build --no-cache centos7basesystemd
             docker-compose -f docker-compose.systemd.yml build --no-cache centos7buildsystemd
             docker-compose -f docker-compose.bintray.yml build --no-cache centos7bintray
+            docker-compose -f docker-compose.refresh.yml build --no-cache centos7refresh
       - run:
           name: Deploy RPM-build Docker images
           command: |
@@ -34,6 +35,7 @@ jobs:
             docker push aursu/rpmbuild:createrepo
             docker push aursu/rpmbuild:webrepo
             docker push aursu/rpmbuild:bintray
+            docker push aursu/rpmbuild:refresh
       - run:
           name: Deploy RPM-build systemd images
           command: |

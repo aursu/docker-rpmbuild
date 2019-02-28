@@ -20,18 +20,18 @@ services:
     build:
       context: createrepo
       dockerfile: Dockerfile.refresh
-      args:
-        action: cleanup
-    image: aursu/rpmbuild:cleanup
+    environment:
+      - REFRESH_ACTION=cleanup
+    image: aursu/rpmbuild:refresh
   centos7cleanup:
     volumes:
       - rpm7:/home/centos/rpmbuild/RPMS
     build:
       context: createrepo
       dockerfile: Dockerfile.refresh
-      args:
-        action: cleanup
-    image: aursu/rpmbuild:cleanup
+    environment:
+      - REFRESH_ACTION=cleanup
+    image: aursu/rpmbuild:refresh
 
 volumes:
   rpm6:
