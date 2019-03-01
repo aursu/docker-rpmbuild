@@ -8,7 +8,7 @@ RUN yum -y install \
     && yum clean all && rm -rf /var/cache/yum
 
 COPY system/etc/yum.repos.d/custom.repo /etc/yum.repos.d/custom.repo
-COPY system/etc/yum.repos.d/bintray-php71.repo /etc/yum.repos.d/bintray-php71.repo
+COPY system/etc/yum.repos.d/bintray-custom.repo /etc/yum.repos.d/bintray-custom.repo
 
 # install common build tools (autotools, compilers, parsers etc)
 RUN yum -y install \
