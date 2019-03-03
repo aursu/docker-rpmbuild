@@ -189,6 +189,13 @@ class Bintray(object):
                     attempts -= 1
                     continue
                 raise e
+            except urllib2.URLError as e:
+                # DNS error could appear
+                if 'Name or service not known' in str(e.reason):
+                    self.set_curl()
+                    attempts -= 1
+                    continue
+                raise e
             break
 
     def set_curl(self):
