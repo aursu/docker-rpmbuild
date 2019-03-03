@@ -284,6 +284,25 @@ class Bintray(object):
                 return True
         return None
 
+    def handle_upload_error(self, err):
+        # conflict, package already exists
+        if err.getcode() == 409:
+            try:
+                rawmsg = err.read()
+            except httplib.IncompleteRead as e:
+                rawmsg = e.partial
+            if debugmode:
+                errorprint("Error: %s" % rawmsg)
+            try:
+                msg = json.loads(rawmsg)
+                if "message" in msg:
+                    msg = msg["message"]
+            except ValueError:
+                msg = rawmsg
+            errorprint("Conflict: %s" % msg)
+            return False
+        raise err
+
     def upload_content(self, repo_path = None):
         if self.repo and self.package:
             if repo_path is None:
@@ -308,20 +327,7 @@ class Bintray(object):
                 try:
                     resp = self.send(reqobj, method='PUT')
                 except urllib2.HTTPError, e:
-                    # conflict, package already exists
-                    if e.getcode() == 409:
-                        try:
-                            rawmsg = e.read()
-                        except httplib.IncompleteRead as e:
-                            rawmsg = e.partial
-                        if debugmode:
-                            errorprint("Error: %s" % rawmsg)
-                        msg = json.loads(rawmsg)
-                        if "message" in msg:
-                            msg = msg["message"]
-                        errorprint("Conflict: %s" % msg)
-                        return False
-                    raise e
+                    return self.handle_upload_error(e)
                 if resp.getcode() == 201:
                     self.update_stats()
                     return True
