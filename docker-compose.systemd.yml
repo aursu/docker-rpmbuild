@@ -29,7 +29,7 @@ services:
     cap_add:
       - SYS_ADMIN
     security_opt:
-      - seccomp:unconfined
+      - seccomp=unconfined
     tmpfs:
       - /run
     image: aursu/rpmbuild:7-build-systemd
