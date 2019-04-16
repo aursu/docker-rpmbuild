@@ -26,7 +26,7 @@ services:
       context: 7/build
       args:
         - image=7-base-root
-    image: aursu/rpmbuild:7-build
+    image: aursu/rpmbuild:7-build-root
   centos6repo:
     restart: always
     volumes:
