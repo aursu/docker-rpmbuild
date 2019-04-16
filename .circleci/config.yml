@@ -30,8 +30,10 @@ jobs:
             docker login -u $DOCKER_USER -p $DOCKER_PASS
             docker push aursu/rpmbuild:6-base
             docker push aursu/rpmbuild:7-base
+            docker push aursu/rpmbuild:7-base-root
             docker push aursu/rpmbuild:6-build
             docker push aursu/rpmbuild:7-build
+            docker push aursu/rpmbuild:7-build-root
             docker push aursu/rpmbuild:createrepo
             docker push aursu/rpmbuild:webrepo
             docker push aursu/rpmbuild:bintray
