@@ -1,4 +1,5 @@
-FROM aursu/rpmbuild:7-base
+ARG image=7-base
+FROM aursu/rpmbuild:${image}
 
 # install RPM build tools and assets
 RUN yum -y install \

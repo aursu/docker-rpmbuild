@@ -8,6 +8,11 @@ services:
     build:
       context: 7/base
     image: aursu/rpmbuild:7-base
+  centos7baseroot:
+    build:
+      context: 7/base
+      dockerfile: Dockerfile.root
+    image: aursu/rpmbuild:7-base-root
   centos6build:
     build:
       context: 6/build
@@ -15,6 +20,12 @@ services:
   centos7build:
     build:
       context: 7/build
+    image: aursu/rpmbuild:7-build
+  centos7buildroot:
+    build:
+      context: 7/build
+      args:
+        - image=7-base-root
     image: aursu/rpmbuild:7-build
   centos6repo:
     restart: always
