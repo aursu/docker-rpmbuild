@@ -1,5 +1,16 @@
 version: "3.5"
 services:
+  centos7baseroot:
+    build:
+      context: 7/base
+      dockerfile: Dockerfile.root
+    image: aursu/rpmbuild:7-base-root
+  centos7buildroot:
+    build:
+      context: 7/build
+      args:
+        - image=7-base-root
+    image: aursu/rpmbuild:7-build-root
   centos7basesystemd:
     build:
       context: 7/base
