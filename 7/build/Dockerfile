@@ -3,10 +3,11 @@ FROM aursu/rpmbuild:${image}
 
 # install RPM build tools and assets
 RUN yum -y install \
+        deltarpm \
         rpm-build \
         yum-utils \
         epel-rpm-macros \
-    && yum clean all && rm -rf /var/cache/yum
+    && yum clean all && rm -rf /var/cache/yum /var/lib/rpm/__db*
 
 COPY system/etc/yum.repos.d/custom.repo /etc/yum.repos.d/custom.repo
 COPY system/etc/yum.repos.d/bintray-custom.repo /etc/yum.repos.d/bintray-custom.repo
@@ -21,7 +22,7 @@ RUN yum -y install \
         libtool \
         make \
         which \
-    && yum clean all && rm -rf /var/cache/yum
+    && yum clean all && rm -rf /var/cache/yum /var/lib/rpm/__db*
 
 VOLUME ${BUILD_TOPDIR}/SRPMS ${BUILD_TOPDIR}/RPMS
 

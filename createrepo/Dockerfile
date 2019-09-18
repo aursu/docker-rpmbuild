@@ -2,7 +2,7 @@ FROM aursu/rpmbuild:7-base
 
 RUN yum -y install \
 		createrepo \
-	&& yum clean all && rm -rf /var/cache/yum
+	&& yum clean all && rm -rf /var/cache/yum /var/lib/rpm/__db*
 
 # sleep for DELAY_PERIOD seconds
 ENV DELAY_PERIOD 60
