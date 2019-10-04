@@ -5,6 +5,8 @@ if [ -z "$BUILD_TOPDIR" ]; then
 fi
 
 cd $BUILD_TOPDIR/RPMS && {
+    # refresh.sh script works only for "refreshing" of existing Yum repository
+    # therefore create Yum repository metadata directory if not exist
     mkdir -p repodata
     /usr/local/bin/refresh.sh
 }
