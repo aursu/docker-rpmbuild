@@ -13,7 +13,7 @@ COPY system/etc/proftpd.conf /etc/proftpd.conf
 
 RUN mkdir /etc/ftpd \
     && echo -n "" | ftpasswd --passwd --file=/etc/ftpd/passwd \
-        --name=${BUILD_USER} \
+        --name=centos \
         --uid=48 --gid=48 \
         --home=${BUILD_HOME} \
         --shell=/bin/false \
