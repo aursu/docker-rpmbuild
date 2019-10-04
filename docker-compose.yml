@@ -40,7 +40,7 @@ services:
     volumes:
       - rpm6:/home/centos-6/rpmbuild/RPMS
       - rpm7:/home/centos-7/rpmbuild/RPMS
-      - rpm8:/home/centos-7/rpmbuild/RPMS
+      - rpm8:/home/centos-8/rpmbuild/RPMS
     build:
       context: webrepo
     image: aursu/rpmbuild:webrepo
@@ -52,7 +52,7 @@ services:
     volumes:
       - rpm6:/home/centos-6/rpmbuild/RPMS
       - rpm7:/home/centos-7/rpmbuild/RPMS
-      - rpm8:/home/centos-7/rpmbuild/RPMS
+      - rpm8:/home/centos-8/rpmbuild/RPMS
     build:
       context: ftprepo
     image: aursu/rpmbuild:ftprepo
