@@ -45,6 +45,17 @@ services:
     image: aursu/rpmbuild:webrepo
     ports:
       - "80:80"
+  ftprepo:
+    networks:
+      - buildnet
+    volumes:
+      - rpm7:/home/centos/rpmbuild/RPMS
+    build:
+      context: ftprepo
+    image: aursu/rpmbuild:ftprepo
+    ports:
+      - "21:21"
+      - "49152-49160:49152-49160"
 
 volumes:
   rpm6:
