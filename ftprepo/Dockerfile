@@ -24,4 +24,4 @@ RUN mkdir /etc/ftpd \
         --sha512 --stdin
 
 EXPOSE 21 49152-49160
-CMD [ "/usr/sbin/proftpd"]
+CMD [ "/usr/sbin/proftpd", "--nodaemon"]
