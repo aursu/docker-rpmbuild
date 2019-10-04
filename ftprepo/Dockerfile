@@ -2,10 +2,6 @@ FROM aursu/rpmbuild:createrepo
 
 ENV LANG=C
 
-ENV BUILD_USER centos
-ENV BUILD_HOME /home/centos
-ENV BUILD_TOPDIR /home/centos/rpmbuild
-
 USER root
 RUN yum -y install \
 		proftpd \
@@ -14,13 +10,19 @@ RUN yum -y install \
 
 COPY system/etc/proftpd.conf /etc/proftpd.conf
 
+# create rpmbuild structure for user root
+RUN mkdir -p /home/centos-{6,7,8}/rpmbuild/RPMS \
+    && chown -R centos:centos /home/centos-{6,7,8}
+
 RUN mkdir /etc/ftpd \
-    && echo -n "" | ftpasswd --passwd --file=/etc/ftpd/passwd \
-        --name=centos \
+    && for u in centos-6 centos-7 centos-8; do \
+        echo -n "" | ftpasswd --passwd --file=/etc/ftpd/passwd \
+        --name=$u \
         --uid=48 --gid=48 \
-        --home=/home/centos \
+        --home=/home/$u \
         --shell=/bin/false \
-        --sha512 --stdin \
+        --sha512 --stdin; \
+    done \
     && echo -n "" | ftpasswd --group --file=/etc/ftpd/group \
         --name=centos \
         --gid=48 \
