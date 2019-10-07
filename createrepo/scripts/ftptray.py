@@ -336,9 +336,9 @@ class FTPRPMPackage(object):
         #   u'path': u'centos/6/httpd-2.4.41-1.el6.x86_64.rpm',
         #   u'size': 983096
         # },
-        self.json = {}
+        self.json = None
         if self.package:
-            self.json['name'] = self.filename
+            self.json = { 'name': self.filename }
             self.json['path'] = self.package
             self.json['package'] = self.name
             if self.created:
@@ -348,6 +348,7 @@ class FTPRPMPackage(object):
                 self.json['owner'] = self.user
             if self.size:
                 self.json['size'] = self.size
+        return self.json
 
 class Ftptray(object):
     hostname = None
@@ -585,7 +586,7 @@ class Ftptray(object):
             for entry in directory:
                 if name in entry:
                     pinfo = FTPRPMPackage(entry).to_json()
-                    if pinfo['package'] == name:
+                    if pinfo and pinfo['package'] == name:
 
                         if self.repo == 'RPMS':
                             pinfo['repo'] = 'custom'
