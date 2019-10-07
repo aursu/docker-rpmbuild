@@ -1,0 +1,668 @@
+#!/usr/bin/python
+# pylint: disable=F0401
+
+import socket
+import sys
+import os
+import rpm
+import rpmUtils, rpmUtils.transaction
+from distutils.version import LooseVersion
+import hashlib
+from datetime import datetime
+
+import ftplib
+from ftplib import FTP
+
+from urllib2 import Request
+
+FTP_PWD_OK   = 257
+FTP_TRANS_OK = 226
+FTP_OK   = 250
+FTP_SIZE_OK  = 213
+
+# global
+debugmode = False
+if 'BINTRAY_DEBUG' in os.environ:
+    debugmode = True
+
+def errorprint(msg):
+    print >> sys.stderr, msg
+
+class FTPRequest(Request):
+    lines = None
+
+    def __init__(self, url, data=None, headers={},
+                 origin_req_host=None, unverifiable=False):
+        Request.__init__(self, url, data, headers, origin_req_host, unverifiable)
+        self.type = 'ftp'
+        if self.port is None:
+            self.port = ftplib.FTP_PORT
+        self.reset()
+
+    def get_selector(self):
+        selector = Request.get_selector(self)
+        if selector[0] == '/':
+            return selector[1:]
+        return selector
+
+    def set_method(self, method):
+        self.get_method = lambda: method
+
+    def add_line(self, line):
+        self.lines += [line]
+
+    def reset(self):
+        self.lines = []
+
+class RPMPackage(object):
+
+    package = None
+    sha256 = None
+    hdr = None
+
+    def __init__(self, package):
+        if os.path.isfile(package):
+            self.package = package
+            self.hdrFromPackage()
+            self.__hash()
+
+    def __hash(self):
+        if self.package:
+            sha256 = hashlib.sha256()
+            with open(self.package, 'rb') as fp:
+                for chunk in iter(lambda: fp.read(4096), b''):
+                    sha256.update(chunk)
+            self.sha256 = sha256.hexdigest()
+
+    def hdrFromPackage(self):
+        if self.package:
+            ts = rpmUtils.transaction.initReadOnlyTransaction()
+            try:
+                self.hdr = rpmUtils.miscutils.hdrFromPackage(ts, self.package)
+            except rpmUtils.RpmUtilsError, e:
+                msg = "Error opening package %s: %s" % (self.package, str(e))
+                errorprint(msg)
+        return self.hdr
+
+    def getPackageAttr(self, attr):
+        if self.hdr:
+            return self.hdr[attr]
+        return None
+
+    def path(self):
+        return self.package
+
+    def size(self):
+        if self.package:
+            return os.stat(self.package).st_size
+        return None
+
+    def filename(self):
+        if self.package:
+            return os.path.basename(self.package)
+        return None
+
+    def sha256sum(self):
+        return self.sha256
+
+    def name(self):
+        return self.getPackageAttr(rpm.RPMTAG_NAME)
+
+    def version(self):
+        return self.getPackageAttr(rpm.RPMTAG_VERSION)
+
+    def release(self):
+        return self.getPackageAttr(rpm.RPMTAG_RELEASE)
+
+    def dist(self):
+        release = self.release()
+        if release and '.' in release:
+            # only CentOS (el) and Fedora (fc) supported
+            s = release.split('.')
+            f = filter(lambda x: len(x) > 2 and x[:2] in ['el', 'fc'], s)
+            if len(f):
+                # in case of el6_8, el6_3.1 etc
+                return f[0].split('_')[0]
+        return None
+
+    def osname(self):
+        dist = self.dist()
+        if dist and dist[:2] == 'fc':
+            return 'fedora'
+        if dist and dist[:2] == 'el':
+            return 'centos'
+        return None
+
+    def osmajor(self):
+        dist = self.dist()
+        if self.osname():
+            try:
+                return int(dist[2:])
+            except ValueError:
+                pass
+        return None
+
+    def arch(self):
+        return self.getPackageAttr(rpm.RPMTAG_ARCH)
+
+    def desc(self):
+        return self.getPackageAttr(rpm.RPMTAG_DESCRIPTION)
+
+    def url(self):
+        return self.getPackageAttr(rpm.RPMTAG_URL)
+
+class FTPRPMPackage(object):
+
+    package = None
+    arch = None
+    name = None
+    version = None
+    release = None
+    osid = None
+    dist = None
+    relmaj = None
+    relmin = None
+    size = None
+    user = None
+    group = None
+    created = None
+
+    json = None
+
+    def __init__(self, package):
+        if ' ' in package:
+            self.set_dirlist_entry(package)
+        else:
+            self.set_package(package)
+
+    def set_package(self, package):
+        self.package = None
+        if isinstance(package, basestring) and package:
+            # rpmbuild/RPMS/gawk-4.0.2-4.el7_3.1.x86_64.rpm -> gawk-4.0.2-4.el7_3.1.x86_64.rpm
+            filename = package
+            if '/' in package:
+                filename = package.split('/')[-1]
+
+            # "awscli-1.14.28-5.el7_5.1.noarch" , "rpm"
+            # "ca-certificates-2018.2.22-70.0.el7_5.noarch", "rpm"
+            __p_arch, ext = filename.rsplit(".", 1)
+            if ext == 'rpm':
+                # "awscli-1.14.28-5.el7_5.1", "noarch"
+                # "ca-certificates-2018.2.22-70.0.el7_5", "noarch"
+                __p_release, arch = __p_arch.rsplit(".", 1)
+
+                if arch in ['noarch', 'i686', 'x86_64']:
+                    self.arch = arch
+                else:
+                    # wrong arch or wrong package name
+                    return None
+
+                # "awscli", "1.14.28", "5.el7_5.1"
+                # "ca-certificates", "2018.2.22", "70.0.el7_5"
+                name, version, release = __p_release.rsplit("-", 2)
+
+                if 'el' in release:
+                    osid = 'el'
+                elif 'fc' in release:
+                    osid = 'fc'
+                else:
+                    # wrong OS identifier
+                    return None
+
+                dist = ".%s" % osid
+
+                # "5.el7_5.1" -> "5", "7_5.1"
+                # "70.0.el7_5" -> "70.0", "7_5"
+                relmaj, distver = release.split(dist)
+                relmin = None
+
+                if "." in distver:
+                    distver, relmin = distver.split(".", 1)
+
+                dist = osid + distver
+
+                # awscli-1.14.28-5.el7_5.1.noarch.rpm
+                # ca-certificates-2018.2.22-70.0.el7_5.noarch.rpm
+                self.package = package
+                self.filename = filename
+                self.name = name       # ca-certificates # awscli
+                self.version = version # 2018.2.22       # 1.14.28
+                self.release = release # 70.0.el7_5      # 5.el7_5.1
+                self.osid = osid       # el              # el
+                self.dist = dist       # el7_5           # el7_5
+                self.relmaj = relmaj   # 70.0            # 5
+                self.relmin = relmin   # None            # 1
+
+    def set_size(self, size):
+        try:
+            self.size = int(size)
+        except ValueError:
+            self.size = None
+
+    def get_path(self):
+        return self.package
+
+    def get_size(self):
+        if self.package:
+            return self.size
+        return None
+
+    def get_filename(self):
+        if self.package:
+            return self.filename
+        return None
+
+    def get_name(self):
+        if self.package:
+            return self.name
+
+    def get_version(self):
+        if self.package:
+            return self.version
+
+    def get_release(self):
+        if self.package:
+            return self.release
+
+    def get_dist(self):
+        if self.package:
+            # in case of el6_8, el6_3 etc
+            return  self.dist.split('_')[0]
+        return None
+
+    def osname(self):
+        dist = self.dist()
+        if dist and dist[:2] == 'fc':
+            return 'fedora'
+        if dist and dist[:2] == 'el':
+            return 'centos'
+        return None
+
+    def osmajor(self):
+        dist = self.dist()
+        if self.osname():
+            try:
+                return int(dist[2:])
+            except ValueError:
+                pass
+        return None
+
+    def get_arch(self):
+        if self.package:
+            return self.arch
+
+    def set_dirlist_entry(self, entry):
+        # -rw-r--r--   1 centos-8 centos   12185279 Oct  4 16:21 php-7.3.9-1.fc31.src.rpm
+        if isinstance(entry, basestring) and entry:
+            data = entry.split()
+            # 7 - perms, links, user, group, size, date, filename
+            if entry[0] == '-' and len(data) >= 7:
+                package = data[-1]
+
+                # check if RPM package name
+                self.set_package(package)
+                if self.package:
+                    _perms, _links, user, group, size = data[:5]
+                    self.user = user
+                    self.group = group
+                    self.set_size(size)
+
+                    mtime = data[5:-1]
+                    d1 = d2 = None
+
+                    try:
+                        # Oct  4 16:21
+                        d1 = datetime.strptime(mtime, '%b %d %H:%M').replace(year=datetime.now().year)
+                    except ValueError:
+                        pass
+
+                    try:
+                        # Oct  7  2018
+                        d2 = datetime.strptime(mtime, '%b %d %Y')
+                    except ValueError:
+                        pass
+
+                    d = d1 or d2
+                    if d:
+                        self.created = d.isoformat()
+
+    def to_json(self):
+        # {
+        #   u'name': u'httpd-2.4.41-1.el6.x86_64.rpm',
+        #   u'package': u'httpd',
+        #   u'created': u'2019-08-15T12:10:06.176Z',
+        #   u'version': u'2.4.41',
+        #   u'owner': u'aursu',
+        #   u'path': u'centos/6/httpd-2.4.41-1.el6.x86_64.rpm',
+        #   u'size': 983096
+        # },
+        self.json = {}
+        if self.package:
+            self.json['name'] = self.filename
+            self.json['path'] = self.package
+            self.json['package'] = self.name
+            if self.created:
+                self.json['created'] = self.created
+            self.json['version'] = self.version
+            if self.user:
+                self.json['owner'] = self.user
+            if self.size:
+                self.json['size'] = self.size
+
+class Ftptray(object):
+    hostname = None
+    repo = None
+
+    username = None
+    password = None
+
+    ftp = None
+    status = None
+    entrypoint = None
+
+    package = None
+    files = None
+    remote = None
+
+    # by initialisation Ftptray object we setup location (FTP host and RPM repository)
+    def __init__(self, hostname, username, passwd = "", repo = "custom"):
+        # connect to server
+        self.set_ftp(hostname)
+        self.set_auth(username, passwd)
+        self.entrypoint = self.pwd()
+        self.set_repo(repo)
+
+    def set_ftp(self, hostname = None):
+        if isinstance(hostname, basestring) and hostname:
+            try:
+                self.hostname = socket.gethostbyname(hostname)
+            except socket.error, e:
+                self.status = int(e.errno)
+                msg = "[Errno %s] %s" % (e.errno, e.strerror)
+                errorprint(msg)
+        self.status = None
+        if self.hostname:
+            # close current connection if exist
+            if self.ftp:
+                self.ftp.close()
+                self.ftp = None
+            try:
+                self.ftp = FTP(self.hostname)
+                self.status = 0
+            except socket.error, e:
+                self.status = int(e.errno)
+                msg = "[Errno %s] %s" % (e.errno, e.strerror)
+                errorprint(msg)
+        self.set_auth()
+        self.entrypoint = self.pwd()
+
+    def set_auth(self, username = None, passwd = None):
+        if isinstance(username, basestring) and username:
+            if isinstance(passwd, basestring) and passwd:
+                self.username = username
+                self.password = passwd
+        self.status = None
+        if self.ftp and self.username and self.password:
+            try:
+                status = self.ftp.login(self.username, self.password)
+                status, _strerror = status.split(' ', 1)
+            except ftplib.error_perm, e:
+                status, strerror = e.message.split(' ', 1)
+                msg = "[Errno %s] %s" % (status, strerror)
+                errorprint(msg)
+            self.status = int(status)
+
+    def pwd(self):
+        curdir = None
+        self.status = None
+        if self.ftp:
+            try:
+                curdir = self.ftp.pwd()
+                # 257 "<curdir>" is the current directory
+                status = FTP_PWD_OK
+            except ftplib.error_perm, e:
+                status, strerror = e.message.split(' ', 1)
+                msg = "[Errno %s] %s" % (status, strerror)
+                errorprint(msg)
+            self.status = int(status)
+        return curdir
+
+    def cwd(self, path):
+        self.status = None
+        if self.ftp and isinstance(path, basestring) and path:
+            try:
+                self.ftp.cwd(path)
+                # 250 CWD command successful
+                status = FTP_OK
+            except ftplib.error_perm, e:
+                status, strerror = e.message.split(' ', 1)
+                msg = "[Errno %s] %s" % (status, strerror)
+                errorprint(msg)
+            self.status = int(status)
+
+    # only for FTPRequest object (due to add_line callback)
+    #
+    # return: array of strings (each directory item per line)
+    # return: None in case of error (and set status into according error code)
+    def dir(self, req):
+        if isinstance(req, basestring):
+            req = FTPRequest(req)
+        path = req.get_selector()
+
+        directory = None
+        self.status = None
+        if self.ftp and isinstance(path, basestring) and path:
+            try:
+                # lambda x: x - avoid printing output of command into stdout
+                self.ftp.dir(path, req.add_line)
+                directory = req.lines
+
+                # 226 Transfer complete
+                status = FTP_TRANS_OK
+            except ftplib.error_temp, e:
+                status, strerror = e.message.split(' ', 1)
+                msg = "[Errno %s] %s" % (status, strerror)
+                errorprint(msg)
+            self.status = int(status)
+        return directory
+
+    # return: File size in bytes (set status to 213)
+    # return: None in case of error (set status code to according error code or
+    #         unset it)
+    def size(self, path):
+        self.status = None
+        size = None
+        if self.ftp and isinstance(path, basestring) and path:
+            # avoid error: 550 SIZE not allowed in ASCII mode
+            self.ftp.voidcmd('TYPE I')
+            try:
+                size = self.ftp.size(path)
+                # 213 <size>
+                status = FTP_SIZE_OK
+            except ftplib.error_perm, e:
+                status, strerror = e.message.split(' ', 1)
+                msg = "[Errno %s] %s" % (status, strerror)
+                errorprint(msg)
+            self.status = int(status)
+        return size
+
+    def check(self, req):
+        self.dir(req)
+        return (self.status == FTP_TRANS_OK)
+
+    def check_file(self, req):
+        if isinstance(req, basestring):
+            req = FTPRequest(req)
+        path = req.get_selector()
+
+        if self.check(req) and self.size(path):
+            return True
+
+        return False
+
+    def check_dir(self, req):
+        if isinstance(req, basestring):
+            req = FTPRequest(req)
+
+        if self.check(req):
+            self.cwd(req.get_selector())
+
+            if self.status == FTP_OK:
+                self.cwd(self.entrypoint)
+                return True
+
+        return False
+
+    def delete(self, path):
+        self.status = None
+        if self.ftp and isinstance(path, basestring) and path:
+            try:
+                self.ftp.delete(path)
+                # 250 DELE command successful
+                status = FTP_OK
+            except ftplib.error_perm, e:
+                status, strerror = e.message.split(' ', 1)
+                msg = "[Errno %s] %s" % (status, strerror)
+                errorprint(msg)
+            self.status = int(status)
+
+    def stor(self, path):
+        self.status = None
+        if self.ftp and isinstance(path, basestring) and path:
+            try:
+                with open(self.package.path(), 'rb') as fp:
+                    self.ftp.storbinary("STOR %s" % path, fp)
+                # 226 Transfer complete
+                status = FTP_TRANS_OK
+            except ftplib.error_perm, e:
+                status, strerror = e.message.split(' ', 1)
+                msg = "[Errno %s] %s" % (status, strerror)
+                errorprint(msg)
+            self.status = int(status)
+
+    def check_repo(self, repo):
+        if isinstance(repo, basestring) and repo:
+            if repo == "custom":
+                repo = "RPMS"
+            req = "ftp://%(hostname)s/rpmbuild/%(repo)s" % {
+                'hostname': self.hostname,
+                'repo': repo
+            }
+            return self.check_dir(req)
+        return False
+
+    def set_repo(self, repo):
+        if self.check_repo(repo):
+            if repo == "custom":
+                repo = "RPMS"
+            self.repo = repo
+
+    def set_package(self, package):
+        rpmpackage = RPMPackage(package)
+        if rpmpackage.name():
+            self.package = rpmpackage
+            self.update_stats()
+
+    def update_stats(self):
+        if self.package:
+            self.files = self.package_files()
+            # sort it out
+            if self.files:
+                self.files.sort(key=lambda x: LooseVersion(x['name']))
+            self.remote = self.files is not None
+
+    def package_files(self):
+        files = None
+        if self.repo and self.package:
+            name = self.package.name()
+
+            req = "ftp://%(hostname)s/rpmbuild/%(repo)s" % {
+                'hostname': self.hostname,
+                'repo': self.repo
+            }
+            directory = self.dir(req)
+
+            for entry in directory:
+                if name in entry:
+                    pinfo = FTPRPMPackage(entry).to_json()
+                    if pinfo['package'] == name:
+
+                        if self.repo == 'RPMS':
+                            pinfo['repo'] = 'custom'
+                        else:
+                            pinfo['repo'] = self.repo
+
+                        if files is None:
+                            files = [pinfo]
+                        else:
+                            files += [pinfo]
+        return files
+
+    def check_package_exists(self):
+        return self.remote
+
+    def check_file_exists(self):
+        if self.files:
+            target = filter(lambda x: x['name'] == self.package.filename(), self.files)
+            return len(target) > 0
+        return None
+
+    def delete_content(self, file_path):
+        if not self.files:
+            return None
+        check = filter(lambda x: x['path'] == file_path, self.files)
+        if len(check) > 0:
+            self.delete(file_path)
+            if self.status == FTP_OK:
+                self.update_stats()
+                return True
+        return False
+
+    def delete_package(self):
+        if self.repo and self.package:
+            if not self.files:
+                return None
+
+            name = self.package.name()
+
+            check = filter(lambda x: x['package'] == name, self.files)
+            status = True
+
+            for p in check:
+                file_path = p['path']
+                status = (status and self.delete_content(file_path))
+            return status
+        return None
+
+    # not more than 2 packages (hardcoded) of the same version in repo
+    def cleanup_packages(self):
+        if not self.files:
+            return None
+        # filter by distribution
+        dist = '.' + self.package.dist()
+        arch = '.' + self.package.arch()
+        distfiles = filter(lambda x: dist in x['name'] and arch in x['name'], self.files)
+        # filter by version
+        verfiles = filter(lambda x: x['version'] == self.package.version(), distfiles)
+        cleanup = []
+        if len(verfiles) > 2:
+            cleanup = verfiles[:-2]
+        status = False
+        for p in cleanup:
+            if self.delete_content(p['path']):
+                status = True
+        return status
+
+    def upload_content(self):
+        if self.repo and self.package:
+            path = "rpmbuild/%(repo)s/%(filename)s" % {
+                'repo': self.repo,
+                'filename': self.package.filename()
+            }
+
+            self.stor(path)
+
+            if self.status == FTP_TRANS_OK:
+                self.update_stats()
+                return True
+        return None
