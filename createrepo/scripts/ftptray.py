@@ -448,6 +448,7 @@ class Ftptray(object):
     def dir(self, req):
         if isinstance(req, basestring):
             req = FTPRequest(req)
+
         path = req.get_selector()
 
         directory = None
@@ -494,6 +495,7 @@ class Ftptray(object):
     def check_file(self, req):
         if isinstance(req, basestring):
             req = FTPRequest(req)
+
         path = req.get_selector()
 
         if self.check(req) and self.size(path):
@@ -505,8 +507,10 @@ class Ftptray(object):
         if isinstance(req, basestring):
             req = FTPRequest(req)
 
+        path = req.get_selector()
+
         if self.check(req):
-            self.cwd(req.get_selector())
+            self.cwd(path)
 
             if self.status == FTP_OK:
                 self.cwd(self.entrypoint)
@@ -527,12 +531,18 @@ class Ftptray(object):
                 errorprint(msg)
             self.status = int(status)
 
-    def stor(self, path):
+    def stor(self, req, fp):
+        if isinstance(req, basestring):
+            req = FTPRequest(req)
+
+        path = req.get_selector()
+        cmd = "STOR %s" % path
+
         self.status = None
         if self.ftp and isinstance(path, basestring) and path:
             try:
-                with open(self.package.path(), 'rb') as fp:
-                    self.ftp.storbinary("STOR %s" % path, fp)
+                self.ftp.storbinary(cmd, fp)
+
                 # 226 Transfer complete
                 status = FTP_TRANS_OK
             except ftplib.error_perm, e:
@@ -656,14 +666,21 @@ class Ftptray(object):
 
     def upload_content(self):
         if self.repo and self.package:
-            path = "rpmbuild/%(repo)s/%(filename)s" % {
+
+            req = "ftp://%(hostname)s/rpmbuild/%(repo)s/%(filename)s" % {
+                'hostname': self.hostname,
                 'repo': self.repo,
                 'filename': self.package.filename()
             }
 
-            self.stor(path)
+            with open(self.package.path(), 'rb') as fp:
+                self.stor(req, fp)
 
             if self.status == FTP_TRANS_OK:
                 self.update_stats()
                 return True
         return None
+
+    def __del__(self):
+        if self.ftp:
+            self.ftp.close()
