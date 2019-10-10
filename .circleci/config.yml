@@ -2,18 +2,9 @@ version: 2
 jobs:
   build:
     machine:
+      image: ubuntu-1604:201903-01
       docker_layer_caching: true
     steps:
-      - run:
-          name: Upgrade Docker CE
-          command: |
-            sudo apt-get update
-            sudo apt-get install docker-ce=18.03.1~ce-0~ubuntu
-      - run:
-          name: Upgrade Docker Compose
-          command: |
-            sudo curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
-            sudo chmod +x /usr/local/bin/docker-compose
       - checkout
       - run:
           name: Build RPM-build Docker images
