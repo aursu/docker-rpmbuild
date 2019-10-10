@@ -9,6 +9,8 @@ import rpmUtils, rpmUtils.transaction
 from distutils.version import LooseVersion
 import hashlib
 from datetime import datetime
+import string
+from optparse import OptionParser
 
 import ftplib
 from ftplib import FTP
@@ -684,3 +686,147 @@ class Ftptray(object):
     def __del__(self):
         if self.ftp:
             self.ftp.close()
+
+def getFileList(path, ext, filelist):
+    """Return all files in path matching ext, store them in filelist, recurse dirs
+       return list object"""
+
+    extlen = len(ext)
+    try:
+        dir_list = os.listdir(path)
+    except OSError, e:
+        errorprint('Error accessing directory %s, %s' % (path, str(e)))
+        return []
+
+    for d in dir_list:
+        if os.path.isdir(path + '/' + d):
+            filelist = getFileList(path + '/' + d, ext, filelist)
+        else:
+            if string.lower(d[-extlen:]) == '%s' % (ext):
+                newpath = os.path.normpath(path + '/' + d)
+                filelist.append(newpath)
+
+    return filelist
+
+def optparser():
+    usage = "Usage: %prog [OPTION]... [FILE]..."
+
+    parser = OptionParser(usage=usage)
+
+    parser.add_option("-h", "--hostname",
+                      metavar="HOST",
+                      dest="hostname",
+                      help="FTP hostname. If not set, environment "
+                           "variable BINTRAY_HOST is used for authentication.")
+    parser.add_option("-u", "--user",
+                      metavar="USER",
+                      dest="username",
+                      help="FTP username. If not set, environment "
+                           "variable BINTRAY_USER is used for authentication.")
+    parser.add_option("-k", "--key",
+                      metavar="KEY",
+                      dest="apikey",
+                      help="FTP password. If not set, environment "
+                           "variable BINTRAY_API_KEY is used for authentication.")
+    parser.add_option("-r", "--repo",
+                      help="RPM repository name. If not set. environment "
+                           "variable BINTRAY_REPO is used")
+    parser.add_option("-d", "--delete",
+                      action="store_true",
+                      dest="delete",
+                      default=False,
+                      help="Delete package [default: %default]")
+    parser.add_option("-c", "--cleanup",
+                      action="store_true",
+                      dest="cleanup",
+                      default=False,
+                      help="Cleanup packages (keep only 2 packages of "
+                           "specified version) [default: %default]")
+    return parser
+
+def usage(parser = None, exit = False):
+    if parser is None:
+        parser = optparser()
+    print parser.format_help()
+    if exit:
+        sys.exit(1)
+
+def parseargs(parser = None):
+
+    if parser is None:
+        parser = optparser()
+
+    (opts, args) = parser.parse_args()
+
+    if not opts.hostname:
+        if 'BINTRAY_HOST' in os.environ:
+            opts.ensure_value('hostname', os.environ['BINTRAY_HOST'])
+        else:
+            errorprint('\nPass either --hostname or envirenmont variable BINTRAY_HOST\n')
+            usage(parser, exit=True)
+
+    if not opts.username:
+        if 'BINTRAY_USER' in os.environ:
+            opts.ensure_value('username', os.environ['BINTRAY_USER'])
+        else:
+            errorprint('\nPass either --user or envirenmont variable BINTRAY_USER\n')
+            usage(parser, exit=True)
+
+    if not opts.apikey:
+        if 'BINTRAY_API_KEY' in os.environ:
+            opts.ensure_value('apikey', os.environ['BINTRAY_API_KEY'])
+        else:
+            errorprint('\nPass either --key or envirenmont variable BINTRAY_API_KEY\n')
+            usage(parser, exit=True)
+
+    if not opts.repo:
+        if 'BINTRAY_REPO' in os.environ:
+            opts.ensure_value('repo', os.environ['BINTRAY_REPO'])
+        else:
+            errorprint('\nPass either --repo or envirenmont variable  BINTRAY_REPO\n')
+            usage(parser, exit=True)
+
+    if len(args) < 1:
+        errorprint('Error: Must specify a package(s) or directory to upload.')
+        usage(parser, exit=True)
+
+    return (opts, args)
+
+def main():
+
+    (opts, args) = parseargs()
+
+    packages = []
+    for p in args:
+        if isinstance(p, basestring):
+            if os.path.isfile(p) \
+            and len(p) > 4 and p[-4:] == '.rpm':
+                packages += [p]
+            elif os.path.isdir(p):
+                packages = getFileList(p, '.rpm', packages)
+
+    ftptray = Ftptray(opts.username, opts.apikey, opts.repo)
+    for p in packages:
+        ftptray.set_package(p)
+
+        # delete package if --delete specified
+        if opts.delete and ftptray.check_package_exists():
+            if ftptray.delete_package():
+                print "Package %s removed from RPM repo %s" % \
+                    (ftptray.package.name(), ftptray.repo)
+                continue
+
+        if not ftptray.check_file_exists():
+            if ftptray.upload_content():
+                print "Package %s uploaded into RPM repo %s" % \
+                    (ftptray.package.filename(), ftptray.repo)
+        else:
+            print "Package %s already exists in RPM repo %s" % \
+                (ftptray.package.filename(), ftptray.repo)
+
+        if opts.cleanup:
+            if ftptray.cleanup_packages():
+                print "RPM repo %s has been cleaned up" % ftptray.repo
+
+if __name__ == "__main__":
+    main()
