@@ -713,7 +713,7 @@ def optparser():
 
     parser = OptionParser(usage=usage)
 
-    parser.add_option("-h", "--hostname",
+    parser.add_option("-s", "--host",
                       metavar="HOST",
                       dest="hostname",
                       help="FTP hostname. If not set, environment "
