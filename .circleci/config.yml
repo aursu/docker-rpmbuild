@@ -14,6 +14,7 @@ jobs:
             docker-compose -f docker-compose.systemd.yml build --no-cache centos7buildsystemd centos7buildroot
             docker-compose -f docker-compose.bintray.yml build --no-cache centos7bintray
             docker-compose -f docker-compose.refresh.yml build --no-cache centos7refresh
+            docker-compose -f docker-compose.ftptray.yml build --no-cache centos7ftptray
       - run:
           name: Deploy RPM-build Docker images
           command: |
@@ -29,6 +30,7 @@ jobs:
             docker push aursu/rpmbuild:ftprepo
             docker push aursu/rpmbuild:bintray
             docker push aursu/rpmbuild:refresh
+            docker push aursu/rpmbuild:ftptray
       - run:
           name: Deploy RPM-build systemd images
           command: |
