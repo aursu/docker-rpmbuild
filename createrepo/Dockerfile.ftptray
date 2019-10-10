@@ -1,0 +1,10 @@
+FROM aursu/rpmbuild:7-base
+
+COPY scripts/ftptray.py /usr/local/bin/ftptray.py
+RUN chmod 755 /usr/local/bin/ftptray.py
+
+VOLUME ${BUILD_TOPDIR}/RPMS
+
+USER $BUILD_USER
+
+CMD /usr/local/bin/ftptray.py -c ${BUILD_TOPDIR}/RPMS
