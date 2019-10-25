@@ -807,7 +807,7 @@ def main():
             elif os.path.isdir(p):
                 packages = getFileList(p, '.rpm', packages)
 
-    ftptray = Ftptray(opts.username, opts.apikey, opts.repo)
+    ftptray = Ftptray(opts.hostname, opts.username, opts.apikey, opts.repo)
     for p in packages:
         ftptray.set_package(p)
 
