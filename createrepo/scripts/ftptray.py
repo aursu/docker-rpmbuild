@@ -42,7 +42,7 @@ class FTPRequest(Request):
         self.reset()
 
     def get_path(self):
-        selector = Request.get_selector(self)
+        selector = self.get_selector()
         if selector[0] == '/':
             return selector[1:]
         return selector
