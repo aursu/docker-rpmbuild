@@ -383,7 +383,7 @@ class Ftptray(object):
                 self.hostname = socket.gethostbyname(hostname)
             except socket.error, e:
                 self.status = int(e.errno)
-                msg = "[Errno %s] %s" % (e.errno, e.strerror)
+                msg = "gethostbyname(%s) [Errno %s] %s" % (hostname, e.errno, e.strerror)
                 errorprint(msg)
         self.status = None
         if self.hostname:
@@ -396,7 +396,7 @@ class Ftptray(object):
                 self.status = 0
             except socket.error, e:
                 self.status = int(e.errno)
-                msg = "[Errno %s] %s" % (e.errno, e.strerror)
+                msg = "FTP [Errno %s] %s" % (e.errno, e.strerror)
                 errorprint(msg)
         self.set_auth()
         self.entrypoint = self.pwd()
@@ -413,7 +413,7 @@ class Ftptray(object):
                 status, _strerror = status.split(' ', 1)
             except ftplib.error_perm, e:
                 status, strerror = e.message.split(' ', 1)
-                msg = "[Errno %s] %s" % (status, strerror)
+                msg = "login [Errno %s] %s" % (status, strerror)
                 errorprint(msg)
             self.status = int(status)
 
@@ -427,7 +427,7 @@ class Ftptray(object):
                 status = FTP_PWD_OK
             except ftplib.error_perm, e:
                 status, strerror = e.message.split(' ', 1)
-                msg = "[Errno %s] %s" % (status, strerror)
+                msg = "pwd [Errno %s] %s" % (status, strerror)
                 errorprint(msg)
             self.status = int(status)
         return curdir
@@ -441,7 +441,7 @@ class Ftptray(object):
                 status = FTP_OK
             except ftplib.error_perm, e:
                 status, strerror = e.message.split(' ', 1)
-                msg = "[Errno %s] %s" % (status, strerror)
+                msg = "cwd [Errno %s] %s" % (status, strerror)
                 errorprint(msg)
             self.status = int(status)
 
@@ -467,7 +467,7 @@ class Ftptray(object):
                 status = FTP_TRANS_OK
             except ftplib.error_temp, e:
                 status, strerror = e.message.split(' ', 1)
-                msg = "[Errno %s] %s" % (status, strerror)
+                msg = "dir [Errno %s] %s" % (status, strerror)
                 errorprint(msg)
             self.status = int(status)
         return directory
@@ -487,7 +487,7 @@ class Ftptray(object):
                 status = FTP_SIZE_OK
             except ftplib.error_perm, e:
                 status, strerror = e.message.split(' ', 1)
-                msg = "[Errno %s] %s" % (status, strerror)
+                msg = "size [Errno %s] %s" % (status, strerror)
                 errorprint(msg)
             self.status = int(status)
         return size
@@ -531,7 +531,7 @@ class Ftptray(object):
                 status = FTP_OK
             except ftplib.error_perm, e:
                 status, strerror = e.message.split(' ', 1)
-                msg = "[Errno %s] %s" % (status, strerror)
+                msg = "delete [Errno %s] %s" % (status, strerror)
                 errorprint(msg)
             self.status = int(status)
 
@@ -551,7 +551,7 @@ class Ftptray(object):
                 status = FTP_TRANS_OK
             except ftplib.error_perm, e:
                 status, strerror = e.message.split(' ', 1)
-                msg = "[Errno %s] %s" % (status, strerror)
+                msg = "storbinary [Errno %s] %s" % (status, strerror)
                 errorprint(msg)
             self.status = int(status)
 
