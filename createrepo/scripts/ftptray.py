@@ -41,7 +41,7 @@ class FTPRequest(Request):
             self.port = ftplib.FTP_PORT
         self.reset()
 
-    def get_selector(self):
+    def get_path(self):
         selector = Request.get_selector(self)
         if selector[0] == '/':
             return selector[1:]
@@ -451,7 +451,7 @@ class Ftptray(object):
         if isinstance(req, basestring):
             req = FTPRequest(req)
 
-        path = req.get_selector()
+        path = req.get_path()
 
         directory = None
         self.status = None
@@ -498,7 +498,7 @@ class Ftptray(object):
         if isinstance(req, basestring):
             req = FTPRequest(req)
 
-        path = req.get_selector()
+        path = req.get_path()
 
         if self.check(req) and self.size(path):
             return True
@@ -509,7 +509,7 @@ class Ftptray(object):
         if isinstance(req, basestring):
             req = FTPRequest(req)
 
-        path = req.get_selector()
+        path = req.get_path()
 
         if self.check(req):
             self.cwd(path)
@@ -537,7 +537,7 @@ class Ftptray(object):
         if isinstance(req, basestring):
             req = FTPRequest(req)
 
-        path = req.get_selector()
+        path = req.get_path()
         cmd = "STOR %s" % path
 
         self.status = None
