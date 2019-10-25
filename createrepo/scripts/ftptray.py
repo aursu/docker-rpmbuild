@@ -403,11 +403,11 @@ class Ftptray(object):
 
     def set_auth(self, username = None, passwd = None):
         if isinstance(username, basestring) and username:
-            if isinstance(passwd, basestring) and passwd:
+            if isinstance(passwd, basestring):
                 self.username = username
                 self.password = passwd
         self.status = None
-        if self.ftp and self.username and self.password:
+        if self.ftp and self.username and isinstance(self.password, basestring):
             try:
                 status = self.ftp.login(self.username, self.password)
                 status, _strerror = status.split(' ', 1)
