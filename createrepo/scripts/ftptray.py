@@ -36,7 +36,9 @@ class FTPRequest(Request):
     def __init__(self, url, data=None, headers={},
                  origin_req_host=None, unverifiable=False):
         Request.__init__(self, url, data, headers, origin_req_host, unverifiable)
+        self.get_type()
         self.type = 'ftp'
+        self.get_host()
         if self.port is None:
             self.port = ftplib.FTP_PORT
         self.reset()
