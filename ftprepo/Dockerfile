@@ -1,6 +1,7 @@
 FROM aursu/rpmbuild:createrepo
 
 ENV LANG=C
+ENV PROFTPD_OPTIONS=
 
 USER root
 RUN yum -y install \
@@ -32,4 +33,4 @@ COPY scripts/ftphook.sh /usr/local/bin/ftphook.sh
 RUN chmod 755 /usr/local/bin/ftphook.sh
 
 EXPOSE 21 49152-49160
-CMD [ "/usr/sbin/proftpd", "--nodaemon"]
+CMD [ "/usr/sbin/proftpd", "--nodaemon", "${PROFTPD_OPTIONS}"]
