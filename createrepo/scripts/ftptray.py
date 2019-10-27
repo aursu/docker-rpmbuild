@@ -17,10 +17,11 @@ from ftplib import FTP
 
 from urllib2 import Request
 
-FTP_PWD_OK   = 257
-FTP_TRANS_OK = 226
-FTP_OK   = 250
 FTP_SIZE_OK  = 213
+FTP_TRANS_OK = 226
+FTP_AUTH_OK  = 230
+FTP_OK       = 250
+FTP_PWD_OK   = 257
 
 # global
 debugmode = False
@@ -363,6 +364,7 @@ class Ftptray(object):
 
     ftp = None
     status = None
+    auth = None
     entrypoint = None
 
     package = None
@@ -373,6 +375,8 @@ class Ftptray(object):
     def __init__(self, hostname, username, passwd = "", repo = "custom"):
         # connect to server
         self.set_ftp(hostname)
+        self.set_auth(username, passwd)
+        self.entrypoint = self.pwd()
         self.set_repo(repo)
 
     def set_ftp(self, hostname = None):
@@ -397,20 +401,21 @@ class Ftptray(object):
                 msg = "FTP [Errno %s] %s" % (e.errno, e.strerror)
                 errorprint(msg)
         self.set_auth()
-        self.entrypoint = self.pwd()
+        if self.status == FTP_AUTH_OK:
+          self.entrypoint = self.pwd()
 
     def set_auth(self, username = None, passwd = None):
         if isinstance(username, basestring) and username:
             if isinstance(passwd, basestring):
-                errorprint("set_auth: set username (%s) and passowrd (len=%d)" % (username, len(passwd)))
                 self.username = username
                 self.password = passwd
         self.status = None
+        self.auth = False
         if self.ftp and self.username and isinstance(self.password, basestring):
             try:
-                errorprint("set_auth: login with username (%s) and passowrd (len=%d)" % (self.username, len(self.password)))
                 status = self.ftp.login(self.username, self.password)
                 status, _strerror = status.split(' ', 1)
+                self.auth = True
             except ftplib.error_perm, e:
                 status, strerror = e.message.split(' ', 1)
                 msg = "login [Errno %s] %s" % (status, strerror)
@@ -466,6 +471,10 @@ class Ftptray(object):
                 # 226 Transfer complete
                 status = FTP_TRANS_OK
             except ftplib.error_temp, e:
+                status, strerror = e.message.split(' ', 1)
+                msg = "dir [Errno %s] %s" % (status, strerror)
+                errorprint(msg)
+            except ftplib.error_perm, e:
                 status, strerror = e.message.split(' ', 1)
                 msg = "dir [Errno %s] %s" % (status, strerror)
                 errorprint(msg)
