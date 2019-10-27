@@ -818,6 +818,7 @@ def main():
 
     ftptray = Ftptray(opts.hostname, opts.username, opts.apikey, opts.repo)
     for p in packages:
+        errorprint("read RPM package: %s" % p)
         ftptray.set_package(p)
 
         # delete package if --delete specified
