@@ -1,6 +1,8 @@
 version: "3.5"
 services:
   centos6ftptray:
+    networks:
+      - buildnet
     volumes:
       - rpm6:/home/centos/rpmbuild/RPMS
     build:
@@ -8,6 +10,8 @@ services:
       dockerfile: Dockerfile.ftptray
     image: aursu/rpmbuild:ftptray
   centos7ftptray:
+    networks:
+      - buildnet
     volumes:
       - rpm7:/home/centos/rpmbuild/RPMS
     build:
@@ -15,12 +19,27 @@ services:
       dockerfile: Dockerfile.ftptray
     image: aursu/rpmbuild:ftptray
   centos8ftptray:
+    networks:
+      - buildnet
     volumes:
       - rpm8:/home/centos/rpmbuild/RPMS
     build:
       context: createrepo
       dockerfile: Dockerfile.ftptray
     image: aursu/rpmbuild:ftptray
+  ftprepo:
+    networks:
+      - buildnet
+    volumes:
+      - rpm6:/home/centos-6/rpmbuild/RPMS
+      - rpm7:/home/centos-7/rpmbuild/RPMS
+      - rpm8:/home/centos-8/rpmbuild/RPMS
+    build:
+      context: ftprepo
+    image: aursu/rpmbuild:ftprepo
+    ports:
+      - "21:21"
+      - "49152-49160:49152-49160"
 
 volumes:
   rpm6:
@@ -29,3 +48,7 @@ volumes:
     name: rpm7
   rpm8:
     name: rpm8
+
+networks:
+  buildnet:
+    name: buildnet
