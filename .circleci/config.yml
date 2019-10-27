@@ -9,12 +9,12 @@ jobs:
           name: Build RPM-build Docker images
           command: |
             docker-compose build --pull --no-cache centos6base centos7base
-            docker-compose build --no-cache centos6build centos7build centos7repo webrepo ftprepo
+            docker-compose build --no-cache centos6build centos7build centos7repo webrepo
             docker-compose -f docker-compose.systemd.yml build --no-cache centos7basesystemd centos7baseroot
             docker-compose -f docker-compose.systemd.yml build --no-cache centos7buildsystemd centos7buildroot
             docker-compose -f docker-compose.bintray.yml build --no-cache centos7bintray
             docker-compose -f docker-compose.refresh.yml build --no-cache centos7refresh
-            docker-compose -f docker-compose.ftptray.yml build --no-cache centos7ftptray
+            docker-compose -f docker-compose.ftptray.yml build --no-cache centos7ftptray ftprepo
       - run:
           name: Deploy RPM-build Docker images
           command: |
