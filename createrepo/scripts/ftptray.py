@@ -373,8 +373,6 @@ class Ftptray(object):
     def __init__(self, hostname, username, passwd = "", repo = "custom"):
         # connect to server
         self.set_ftp(hostname)
-        self.set_auth(username, passwd)
-        self.entrypoint = self.pwd()
         self.set_repo(repo)
 
     def set_ftp(self, hostname = None):
