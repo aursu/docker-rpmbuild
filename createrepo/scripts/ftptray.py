@@ -312,7 +312,7 @@ class FTPRPMPackage(object):
                     self.group = group
                     self.set_size(size)
 
-                    mtime = data[5:-1]
+                    mtime = ' '.join(data[5:-1])
                     d1 = d2 = None
 
                     try:
