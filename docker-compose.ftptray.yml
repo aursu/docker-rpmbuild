@@ -40,6 +40,9 @@ services:
     ports:
       - "21:21"
       - "49152-49160:49152-49160"
+    environment:
+      - PUBLICADDR
+      - PROFTPD_OPTIONS
 
 volumes:
   rpm6:

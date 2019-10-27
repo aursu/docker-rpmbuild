@@ -30,7 +30,8 @@ RUN mkdir /etc/ftpd \
         --sha512 --stdin
 
 COPY scripts/ftphook.sh /usr/local/bin/ftphook.sh
-RUN chmod 755 /usr/local/bin/ftphook.sh
+COPY scripts/proftpd-foreground /usr/local/bin/proftpd-foreground
+RUN chmod 755 /usr/local/bin/ftphook.sh /usr/local/bin/proftpd-foreground
 
 EXPOSE 21 49152-49160
-CMD [ "/usr/sbin/proftpd", "--nodaemon", "${PROFTPD_OPTIONS}"]
+CMD ["proftpd-foreground"]
