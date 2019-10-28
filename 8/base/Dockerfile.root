@@ -1,0 +1,13 @@
+FROM aursu/centos:8-scm
+
+ARG builduser=root
+ARG buildgroup=root
+ARG buildhome=/root
+
+ENV BUILD_USER $builduser
+ENV BUILD_HOME $buildhome
+ENV BUILD_TOPDIR ${BUILD_HOME}/rpmbuild
+
+# create rpmbuild structure for user root
+RUN mkdir -p ${BUILD_TOPDIR}/{RPMS,SOURCES,SPECS,SRPMS} \
+    && chown -R $BUILD_USER:$buildgroup ${BUILD_TOPDIR}
