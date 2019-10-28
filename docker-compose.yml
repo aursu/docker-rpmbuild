@@ -8,6 +8,16 @@ services:
     build:
       context: 7/base
     image: aursu/rpmbuild:7-base
+  centos7baseroot:
+    build:
+      context: 7/base
+      dockerfile: Dockerfile.root
+    image: aursu/rpmbuild:7-base-root
+  centos8baseroot:
+    build:
+      context: 8/base
+      dockerfile: Dockerfile.root
+    image: aursu/rpmbuild:8-base-root
   centos6build:
     build:
       context: 6/build
@@ -16,6 +26,18 @@ services:
     build:
       context: 7/build
     image: aursu/rpmbuild:7-build
+  centos7buildroot:
+    build:
+      context: 7/build
+      args:
+        - image=7-base-root
+    image: aursu/rpmbuild:7-build-root
+  centos8buildroot:
+    build:
+      context: 8/build
+      args:
+        - image=8-base-root
+    image: aursu/rpmbuild:8-build-root
   centos6repo:
     restart: always
     volumes:
@@ -29,6 +51,15 @@ services:
     restart: always
     volumes:
       - rpm7:/home/centos/rpmbuild/RPMS
+    build:
+      context: createrepo
+    image: aursu/rpmbuild:createrepo
+    environment:
+      - DELAY_PERIOD=30
+  centos8repo:
+    restart: always
+    volumes:
+      - rpm8:/home/centos/rpmbuild/RPMS
     build:
       context: createrepo
     image: aursu/rpmbuild:createrepo
