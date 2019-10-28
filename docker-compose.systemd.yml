@@ -1,26 +1,25 @@
 version: "3.5"
 services:
-  centos7baseroot:
-    build:
-      context: 7/base
-      dockerfile: Dockerfile.root
-    image: aursu/rpmbuild:7-base-root
-  centos7buildroot:
-    build:
-      context: 7/build
-      args:
-        - image=7-base-root
-    image: aursu/rpmbuild:7-build-root
   centos7basesystemd:
     build:
       context: 7/base
       dockerfile: Dockerfile.systemd
     image: aursu/rpmbuild:7-base-systemd
+  centos8basesystemd:
+    build:
+      context: 8/base
+      dockerfile: Dockerfile.systemd
+    image: aursu/rpmbuild:8-base-systemd
   centos7buildsystemd:
     build:
       context: 7/build
       dockerfile: Dockerfile.systemd
     image: aursu/rpmbuild:7-build-systemd
+  centos8buildsystemd:
+    build:
+      context: 8/build
+      dockerfile: Dockerfile.systemd
+    image: aursu/rpmbuild:8-build-systemd
   centos7buildtest:
     networks:
       - buildnet
@@ -33,6 +32,18 @@ services:
     tmpfs:
       - /run
     image: aursu/rpmbuild:7-build-systemd
+  centos8buildtest:
+    networks:
+      - buildnet
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp=unconfined
+    tmpfs:
+      - /run
+    image: aursu/rpmbuild:8-build-systemd
 
 networks:
   buildnet:
