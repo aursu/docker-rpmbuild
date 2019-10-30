@@ -5,3 +5,5 @@ name=CentOS-$releasever - Custom
 baseurl=http://webrepo/centos/$releasever/custom
 gpgcheck=0
 enabled=0
+# https://dnf.readthedocs.io/en/latest/modularity.html#hotfix-repositories
+module_hotfixes=true
