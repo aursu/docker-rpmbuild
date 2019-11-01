@@ -1,18 +1,21 @@
 ARG image=8-base
 FROM aursu/rpmbuild:${image}
 
+ENV LANG=C
+
 # install RPM build tools and assets
-RUN yum -y install \
+RUN dnf -y install \
         rpm-build \
         dnf-utils \
         epel-rpm-macros \
-    && yum clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
+    && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 COPY system/etc/yum.repos.d/custom.repo /etc/yum.repos.d/custom.repo
 COPY system/etc/yum.repos.d/bintray-custom.repo /etc/yum.repos.d/bintray-custom.repo
 
 # install common build tools (autotools, compilers, parsers etc)
-RUN yum -y install \
+RUN dnf config-manager --set-enabled PowerTools \
+    && dnf -y install \
         autoconf \
         bison \
         flex \
@@ -21,7 +24,7 @@ RUN yum -y install \
         libtool \
         make \
         which \
-    && yum clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
+    && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 VOLUME ${BUILD_TOPDIR}/SRPMS ${BUILD_TOPDIR}/RPMS
 
