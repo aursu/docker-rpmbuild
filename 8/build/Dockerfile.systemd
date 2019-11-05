@@ -14,6 +14,7 @@ COPY system/etc/yum.repos.d/bintray-custom.repo /etc/yum.repos.d/bintray-custom.
 
 # install common build tools (autotools, compilers, parsers etc)
 RUN dnf config-manager --set-enabled PowerTools \
+    && dnf config-manager --set-enabled epel-playground \
     && dnf -y install \
         autoconf \
         bison \
