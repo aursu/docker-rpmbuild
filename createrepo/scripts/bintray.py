@@ -197,6 +197,10 @@ class Bintray(object):
                     attempts -= 1
                     continue
                 raise e
+            except httplib.BadStatusLine:
+                self.set_curl()
+                attempts -= 1
+                continue
             break
 
     def set_curl(self):
