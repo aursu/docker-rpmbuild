@@ -13,6 +13,7 @@ env:
     - OS6=6.10
     - OS7=7.7.1908
     - OS8=8.1.1911
+    - TAGDEPLOY=1
     - OS6TAG=6.10
     - OS7TAG=7.7.1908
     - OS8TAG=8.1.1911
@@ -39,6 +40,8 @@ deploy:
     script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
   - provider: script
     script: OS6TAG=6 OS7TAG=7 OS8TAG=8 docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
+    on:
+      condition: $TAGDEPLOY -eq 1
 
 jobs:
   include:
@@ -46,10 +49,8 @@ jobs:
       env:
         - BUILD_COMPOSE_FILE=docker-compose.yml
         - BUILD=webrepo
+        - TAGDEPLOY=0
       after_success: skip
-      deploy:
-        provider: script
-        script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
     - stage: build
       env:
         - BUILD_COMPOSE_FILE=docker-compose.yml
@@ -74,10 +75,8 @@ jobs:
       env:
         - BUILD_COMPOSE_FILE=docker-compose.yml
         - BUILD=centos7repo
+        - TAGDEPLOY=0
       after_success: skip
-      deploy:
-        - provider: script
-          script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
     - stage: build
       env:
         - BUILD_COMPOSE_FILE=docker-compose.systemd.yml
@@ -90,34 +89,26 @@ jobs:
       env:
         - BUILD_COMPOSE_FILE=docker-compose.bintray.yml
         - BUILD=centos7bintray
+        - TAGDEPLOY=0
       after_success: skip
-      deploy:
-        - provider: script
-          script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
     - stage: build
       env:
         - BUILD_COMPOSE_FILE=docker-compose.ftptray.yml
         - BUILD=centos7ftptray
+        - TAGDEPLOY=0
       after_success: skip
-      deploy:
-        - provider: script
-          script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
     - stage: repo
       env:
         - BUILD_COMPOSE_FILE=docker-compose.refresh.yml
         - BUILD=centos7refresh
+        - TAGDEPLOY=0
       after_success: skip
-      deploy:
-        - provider: script
-          script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
     - stage: repo
       env:
         - BUILD_COMPOSE_FILE=docker-compose.ftptray.yml
         - BUILD=ftprepo
+        - TAGDEPLOY=0
       after_success: skip
-      deploy:
-        - provider: script
-          script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
 
 stages:
   - test
