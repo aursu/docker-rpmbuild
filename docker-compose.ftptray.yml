@@ -1,25 +1,21 @@
 version: "3.5"
 services:
-  centos6ftptray:
-    volumes:
-      - rpm6:/home/centos/rpmbuild/RPMS
-    build:
-      context: createrepo
-      dockerfile: Dockerfile.ftptray
-    image: aursu/rpmbuild:ftptray
   centos7ftptray:
     volumes:
       - rpm7:/home/centos/rpmbuild/RPMS
     build:
       context: createrepo
       dockerfile: Dockerfile.ftptray
+      args:
+        centos: $OS7
+    image: aursu/rpmbuild:ftptray
+  centos6ftptray:
+    volumes:
+      - rpm6:/home/centos/rpmbuild/RPMS
     image: aursu/rpmbuild:ftptray
   centos8ftptray:
     volumes:
       - rpm8:/home/centos/rpmbuild/RPMS
-    build:
-      context: createrepo
-      dockerfile: Dockerfile.ftptray
     image: aursu/rpmbuild:ftptray
   ftprepo:
     volumes:

@@ -1,4 +1,5 @@
-FROM aursu/rpmbuild:7-base
+ARG centos=7.7.1908
+FROM aursu/rpmbuild:${centos}-base
 
 RUN yum -y install \
 		createrepo \

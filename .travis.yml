@@ -1,0 +1,125 @@
+language: minimal
+
+services:
+  - docker
+
+addons:
+  apt:
+    packages:
+      - docker-ce
+
+env:
+  global:
+    - OS6=6.10
+    - OS7=7.7.1908
+    - OS8=8.1.1911
+    - OS6TAG=6.10
+    - OS7TAG=7.7.1908
+    - OS8TAG=8.1.1911
+  jobs:
+    - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=centos6base
+    - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=centos7base
+    - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=centos7baseroot
+    - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=centos8base
+    - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=centos8baseroot
+    - BUILD_COMPOSE_FILE=docker-compose.systemd.yml   BUILD=centos7basesystemd
+    - BUILD_COMPOSE_FILE=docker-compose.systemd.yml   BUILD=centos8basesystemd
+
+script:
+  - docker-compose -f ${BUILD_COMPOSE_FILE} build --no-cache --pull ${BUILD}
+
+after_success:
+  - OS6TAG=6 OS7TAG=7 OS8TAG=8 docker-compose -f ${BUILD_COMPOSE_FILE} build ${BUILD}
+
+before_deploy:
+  - docker login -u $DOCKER_USER -p $DOCKER_PASS
+
+deploy:
+  - provider: script
+    script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
+  - provider: script
+    script: OS6TAG=6 OS7TAG=7 OS8TAG=8 docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
+
+jobs:
+  include:
+    - stage: test
+      env:
+        - BUILD_COMPOSE_FILE=docker-compose.yml
+        - BUILD=webrepo
+      after_success: skip
+      deploy:
+        - provider: script
+          script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
+    - stage: build
+      env:
+        - BUILD_COMPOSE_FILE=docker-compose.yml
+        - BUILD=centos6build
+    - stage: build
+      env:
+        - BUILD_COMPOSE_FILE=docker-compose.yml
+        - BUILD=centos7build
+    - stage: build
+      env:
+        - BUILD_COMPOSE_FILE=docker-compose.yml
+        - BUILD=centos7buildroot
+    - stage: build
+      env:
+        - BUILD_COMPOSE_FILE=docker-compose.yml
+        - BUILD=centos8build
+    - stage: build
+      env:
+        - BUILD_COMPOSE_FILE=docker-compose.yml
+        - BUILD=centos8buildroot
+    - stage: build
+      env:
+        - BUILD_COMPOSE_FILE=docker-compose.yml
+        - BUILD=centos7repo
+      after_success: skip
+      deploy:
+        - provider: script
+          script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
+    - stage: build
+      env:
+        - BUILD_COMPOSE_FILE=docker-compose.systemd.yml
+        - BUILD=centos7buildsystemd
+    - stage: build
+      env:
+        - BUILD_COMPOSE_FILE=docker-compose.systemd.yml
+        - BUILD=centos8buildsystemd
+    - stage: build
+      env:
+        - BUILD_COMPOSE_FILE=docker-compose.bintray.yml
+        - BUILD=centos7bintray
+      after_success: skip
+      deploy:
+        - provider: script
+          script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
+    - stage: build
+      env:
+        - BUILD_COMPOSE_FILE=docker-compose.ftptray.yml
+        - BUILD=centos7ftptray
+      after_success: skip
+      deploy:
+        - provider: script
+          script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
+    - stage: repo
+      env:
+        - BUILD_COMPOSE_FILE=docker-compose.refresh.yml
+        - BUILD=centos7refresh
+      after_success: skip
+      deploy:
+        - provider: script
+          script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
+    - stage: repo
+      env:
+        - BUILD_COMPOSE_FILE=docker-compose.ftptray.yml
+        - BUILD=ftprepo
+      after_success: skip
+      deploy:
+        - provider: script
+          script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
+
+stages:
+  - test
+  - build
+  - repo

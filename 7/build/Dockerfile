@@ -1,5 +1,6 @@
-ARG image=7-base
-FROM aursu/rpmbuild:${image}
+ARG centos=7.7.1908
+ARG image=base
+FROM aursu/rpmbuild:${centos}-${image}
 
 # install RPM build tools and assets
 RUN yum -y install \

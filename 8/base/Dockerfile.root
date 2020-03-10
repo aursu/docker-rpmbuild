@@ -1,4 +1,5 @@
-FROM aursu/centos:8-scm
+ARG centos=8.1.1911
+FROM aursu/centos:${centos}-scm
 
 ARG builduser=root
 ARG buildgroup=root

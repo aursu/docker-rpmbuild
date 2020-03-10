@@ -1,5 +1,6 @@
-ARG image=8-base
-FROM aursu/rpmbuild:${image}
+ARG centos=8.1.1911
+ARG image=base
+FROM aursu/rpmbuild:${centos}-${image}
 
 ENV LANG=C
 

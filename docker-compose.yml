@@ -3,55 +3,75 @@ services:
   centos6base:
     build:
       context: 6/base
-    image: aursu/rpmbuild:6-base
+      args:
+        centos: $OS6
+    image: "aursu/rpmbuild:${OS6TAG}-base"
   centos7base:
     build:
       context: 7/base
-    image: aursu/rpmbuild:7-base
+      args:
+        centos: $OS7
+    image: "aursu/rpmbuild:${OS7TAG}-base"
   centos7baseroot:
     build:
       context: 7/base
       dockerfile: Dockerfile.root
-    image: aursu/rpmbuild:7-base-root
+      args:
+        centos: $OS7
+    image: "aursu/rpmbuild:${OS7TAG}-base-root"
   centos8base:
     build:
       context: 8/base
-    image: aursu/rpmbuild:8-base
+      args:
+        centos: $OS8
+    image: "aursu/rpmbuild:${OS8TAG}-base"
   centos8baseroot:
     build:
       context: 8/base
       dockerfile: Dockerfile.root
-    image: aursu/rpmbuild:8-base-root
+      args:
+        centos: $OS8
+    image: "aursu/rpmbuild:${OS8TAG}-base-root"
   centos6build:
     build:
       context: 6/build
-    image: aursu/rpmbuild:6-build
+      args:
+        centos: $OS6
+    image: "aursu/rpmbuild:${OS6TAG}-build"
   centos7build:
     build:
       context: 7/build
-    image: aursu/rpmbuild:7-build
+      args:
+        centos: $OS7
+    image: "aursu/rpmbuild:${OS7TAG}-build"
   centos7buildroot:
     build:
       context: 7/build
       args:
-        - image=7-base-root
-    image: aursu/rpmbuild:7-build-root
+        centos: $OS7
+        image: base-root
+    image: "aursu/rpmbuild:${OS7TAG}-build-root"
   centos8build:
     build:
       context: 8/build
-    image: aursu/rpmbuild:8-build
+      args:
+        centos: $OS8
+    image: "aursu/rpmbuild:${OS8TAG}-build"
   centos8buildroot:
     build:
       context: 8/build
       args:
-        - image=8-base-root
-    image: aursu/rpmbuild:8-build-root
+        centos: $OS8
+        image: base-root
+    image: "aursu/rpmbuild:${OS8TAG}-build-root"
   centos7repo:
     restart: always
     volumes:
       - rpm7:/home/centos/rpmbuild/RPMS
     build:
       context: createrepo
+      args:
+        centos: $OS7
     image: aursu/rpmbuild:createrepo
     environment:
       - DELAY_PERIOD=30
@@ -78,6 +98,8 @@ services:
       - rpm8:/home/centos-8/rpmbuild/RPMS
     build:
       context: webrepo
+      args:
+        centos: $OS8
     image: aursu/rpmbuild:webrepo
     ports:
       - "80:80"

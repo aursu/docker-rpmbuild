@@ -1,4 +1,5 @@
-FROM aursu/centos:httpd
+ARG centos=8.1.1911
+FROM aursu/centos:${centos}-httpd
 
 # enabe alias_module to use it for /centos location alias
 COPY system/etc/httpd/conf.modules.d/00-extra.conf \

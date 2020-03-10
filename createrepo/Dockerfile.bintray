@@ -1,4 +1,5 @@
-FROM aursu/rpmbuild:7-base
+ARG centos=7.7.1908
+FROM aursu/rpmbuild:${centos}-base
 
 COPY scripts/bintray.py /usr/local/bin/bintray.py
 RUN chmod 755 /usr/local/bin/bintray.py

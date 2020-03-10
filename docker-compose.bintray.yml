@@ -1,25 +1,21 @@
 version: "3.5"
 services:
-  centos6bintray:
-    volumes:
-      - rpm6:/home/centos/rpmbuild/RPMS
-    build:
-      context: createrepo
-      dockerfile: Dockerfile.bintray
-    image: aursu/rpmbuild:bintray
   centos7bintray:
     volumes:
       - rpm7:/home/centos/rpmbuild/RPMS
     build:
       context: createrepo
       dockerfile: Dockerfile.bintray
+      args:
+        centos: $OS7
+    image: aursu/rpmbuild:bintray
+  centos6bintray:
+    volumes:
+      - rpm6:/home/centos/rpmbuild/RPMS
     image: aursu/rpmbuild:bintray
   centos8bintray:
     volumes:
       - rpm8:/home/centos/rpmbuild/RPMS
-    build:
-      context: createrepo
-      dockerfile: Dockerfile.bintray
     image: aursu/rpmbuild:bintray
 
 volumes:

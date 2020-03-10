@@ -1,4 +1,5 @@
-FROM aursu/rpmbuild:8-base-systemd
+ARG centos=8.1.1911
+FROM aursu/rpmbuild:${centos}-base-systemd
 
 ENV LANG=C
 

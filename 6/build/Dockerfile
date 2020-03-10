@@ -1,4 +1,5 @@
-FROM aursu/rpmbuild:6-base
+ARG centos=6.10
+FROM aursu/rpmbuild:${centos}-base
 
 # install RPM build tools and assets
 RUN yum -y install \

@@ -4,22 +4,30 @@ services:
     build:
       context: 7/base
       dockerfile: Dockerfile.systemd
-    image: aursu/rpmbuild:7-base-systemd
+      args:
+        centos: $OS7
+    image: "aursu/rpmbuild:${OS7TAG}-base-systemd"
   centos8basesystemd:
     build:
       context: 8/base
       dockerfile: Dockerfile.systemd
-    image: aursu/rpmbuild:8-base-systemd
+      args:
+        centos: $OS8
+    image: "aursu/rpmbuild:${OS8TAG}-base-systemd"
   centos7buildsystemd:
     build:
       context: 7/build
       dockerfile: Dockerfile.systemd
-    image: aursu/rpmbuild:7-build-systemd
+      args:
+        centos: $OS7
+    image: "aursu/rpmbuild:${OS7TAG}-build-systemd"
   centos8buildsystemd:
     build:
       context: 8/build
       dockerfile: Dockerfile.systemd
-    image: aursu/rpmbuild:8-build-systemd
+      args:
+        centos: $OS8
+    image: "aursu/rpmbuild:${OS8TAG}-build-systemd"
   centos7buildtest:
     networks:
       - buildnet
@@ -31,7 +39,7 @@ services:
       - seccomp=unconfined
     tmpfs:
       - /run
-    image: aursu/rpmbuild:7-build-systemd
+    image: "aursu/rpmbuild:${OS7}-build-systemd"
   centos8buildtest:
     networks:
       - buildnet
@@ -43,7 +51,7 @@ services:
       - seccomp=unconfined
     tmpfs:
       - /run
-    image: aursu/rpmbuild:8-build-systemd
+    image: "aursu/rpmbuild:${OS8}-build-systemd"
 
 networks:
   buildnet:
