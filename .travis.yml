@@ -48,8 +48,8 @@ jobs:
         - BUILD=webrepo
       after_success: skip
       deploy:
-        - provider: script
-          script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
+        provider: script
+        script: docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
     - stage: build
       env:
         - BUILD_COMPOSE_FILE=docker-compose.yml
