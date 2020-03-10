@@ -41,7 +41,7 @@ deploy:
   - provider: script
     script: OS6TAG=6 OS7TAG=7 OS8TAG=8 docker-compose -f ${BUILD_COMPOSE_FILE} push ${BUILD}
     on:
-      condition: $TAGDEPLOY -eq 1
+      condition: $TAGDEPLOY = 1
 
 jobs:
   include:
