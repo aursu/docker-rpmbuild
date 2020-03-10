@@ -30,7 +30,7 @@ script:
   - docker-compose -f ${BUILD_COMPOSE_FILE} build --no-cache --pull ${BUILD}
 
 after_success:
-  - OS6TAG=6 OS7TAG=7 OS8TAG=8 docker-compose -f ${BUILD_COMPOSE_FILE} build ${BUILD}
+  - test $TAGDEPLOY = 1 && OS6TAG=6 OS7TAG=7 OS8TAG=8 docker-compose -f ${BUILD_COMPOSE_FILE} build ${BUILD}
 
 before_deploy:
   - docker login -u $DOCKER_USER -p $DOCKER_PASS
