@@ -50,7 +50,6 @@ jobs:
         - BUILD_COMPOSE_FILE=docker-compose.yml
         - BUILD=webrepo
         - TAGDEPLOY=0
-      after_success: skip
     - stage: build
       env:
         - BUILD_COMPOSE_FILE=docker-compose.yml
@@ -76,7 +75,6 @@ jobs:
         - BUILD_COMPOSE_FILE=docker-compose.yml
         - BUILD=centos7repo
         - TAGDEPLOY=0
-      after_success: skip
     - stage: build
       env:
         - BUILD_COMPOSE_FILE=docker-compose.systemd.yml
@@ -90,25 +88,21 @@ jobs:
         - BUILD_COMPOSE_FILE=docker-compose.bintray.yml
         - BUILD=centos7bintray
         - TAGDEPLOY=0
-      after_success: skip
     - stage: build
       env:
         - BUILD_COMPOSE_FILE=docker-compose.ftptray.yml
         - BUILD=centos7ftptray
         - TAGDEPLOY=0
-      after_success: skip
     - stage: repo
       env:
         - BUILD_COMPOSE_FILE=docker-compose.refresh.yml
         - BUILD=centos7refresh
         - TAGDEPLOY=0
-      after_success: skip
     - stage: repo
       env:
         - BUILD_COMPOSE_FILE=docker-compose.ftptray.yml
         - BUILD=ftprepo
         - TAGDEPLOY=0
-      after_success: skip
 
 stages:
   - test
