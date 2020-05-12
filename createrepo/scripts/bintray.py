@@ -196,6 +196,10 @@ class Bintray(object):
                     self.set_curl()
                     attempts -= 1
                     continue
+                elif 'EOF occurred in violation of protocol' in str(e.reason):
+                    self.set_curl()
+                    attempts -= 1
+                    continue
                 raise e
             except httplib.BadStatusLine:
                 self.set_curl()
