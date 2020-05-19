@@ -481,28 +481,28 @@ def parseargs(parser = None):
     (opts, args) = parser.parse_args()
 
     if not opts.username:
-        if 'BINTRAY_USER' in os.environ:
+        if 'BINTRAY_USER' in os.environ and os.environ['BINTRAY_USER']:
             opts.ensure_value('username', os.environ['BINTRAY_USER'])
         else:
             errorprint('\nPass either --user or envirenmont variable BINTRAY_USER\n')
             usage(parser, exit=True)
 
     if not opts.apikey:
-        if 'BINTRAY_API_KEY' in os.environ:
+        if 'BINTRAY_API_KEY' in os.environ and os.environ['BINTRAY_API_KEY']:
             opts.ensure_value('apikey', os.environ['BINTRAY_API_KEY'])
         else:
             errorprint('\nPass either --key or envirenmont variable BINTRAY_API_KEY\n')
             usage(parser, exit=True)
 
     if not opts.repo:
-        if 'BINTRAY_REPO' in os.environ:
+        if 'BINTRAY_REPO' in os.environ and os.environ['BINTRAY_REPO']:
             opts.ensure_value('repo', os.environ['BINTRAY_REPO'])
         else:
             errorprint('\nPass either --repo or envirenmont variable  BINTRAY_REPO\n')
             usage(parser, exit=True)
 
     if not opts.vcs_url:
-        if 'PACKAGE_VCS_URL' in os.environ:
+        if 'PACKAGE_VCS_URL' in os.environ and os.environ['PACKAGE_VCS_URL']:
             opts.ensure_value('vcs_url', os.environ['PACKAGE_VCS_URL'])
         else:
             errorprint('\nPass either --vcs-url or envirenmont variable PACKAGE_VCS_URL\n')
