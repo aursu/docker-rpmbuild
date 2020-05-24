@@ -31,6 +31,15 @@ if 'BINTRAY_DEBUG' in os.environ:
 def errorprint(msg):
     print >> sys.stderr, msg
 
+class BintrayError(Exception):
+    """Bintray exception"""
+    def __init__(self, *args):
+        Exception.__init__(self, *args)
+        try:
+            self.response = args[0]
+        except IndexError:
+            self.response = 'No response given'
+
 class RPMPackage(object):
 
     package = None
@@ -162,7 +171,7 @@ class Bintray(object):
 
     def send(self, req, data = None, method = None):
         # we try to relogin only once
-        attempts = 2
+        attempts = 4
         # check if request is urllib2.Request
         if isinstance(req, basestring):
             req = urllib2.Request(req)
@@ -206,6 +215,8 @@ class Bintray(object):
                 attempts -= 1
                 continue
             break
+        if attempts == 0:
+            raise BintrayError('Send attempts exceeded')
 
     def set_curl(self):
         self.curl = urllib2.build_opener()
