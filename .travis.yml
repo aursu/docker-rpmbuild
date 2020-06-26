@@ -12,11 +12,11 @@ env:
   global:
     - OS6=6.10
     - OS7=7.8.2003
-    - OS8=8.1.1911
+    - OS8=8.2.2004
     - TAGDEPLOY=1
     - OS6TAG=6.10
     - OS7TAG=7.8.2003
-    - OS8TAG=8.1.1911
+    - OS8TAG=8.2.2004
   jobs:
     - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=centos6base
     - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=centos7base

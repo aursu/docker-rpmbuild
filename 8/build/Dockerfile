@@ -1,4 +1,4 @@
-ARG centos=8.1.1911
+ARG centos=8.2.2004
 ARG image=base
 FROM aursu/rpmbuild:${centos}-${image}
 
