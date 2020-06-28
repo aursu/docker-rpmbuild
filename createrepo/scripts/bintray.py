@@ -349,7 +349,8 @@ class Bintray(object):
                     'X-Bintray-Package': self.package.name(),
                     'X-Bintray-Version': self.package.version(),
                     'X-Checksum-Sha2': self.package.sha256sum(),
-                    'X-Bintray-Publish': '1'
+                    'X-Bintray-Publish': '1',
+                    'X-Bintray-Override': '1'
                 })
                 try:
                     resp = self.send(reqobj, method='PUT')
