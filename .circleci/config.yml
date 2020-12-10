@@ -1,0 +1,116 @@
+version: 2.1
+
+orbs:
+  docker-rpmbuild: aursu/rpmbuild@1.1.2
+
+workflows:
+  dockerrpmbuild:
+    jobs:
+      - docker-rpmbuild/image:
+          name: centos6base
+          compose_file: docker-compose.yml
+          build_service: centos6base
+      - docker-rpmbuild/image:
+          name: centos7base
+          compose_file: docker-compose.yml
+          build_service: centos7base
+      - docker-rpmbuild/image:
+          name: centos7baseroot
+          compose_file: docker-compose.yml
+          build_service: centos7baseroot
+      - docker-rpmbuild/image:
+          name: centos8base
+          compose_file: docker-compose.yml
+          build_service: centos8base
+      - docker-rpmbuild/image:
+          name: centos8baseroot
+          compose_file: docker-compose.yml
+          build_service: centos8baseroot
+      - docker-rpmbuild/image:
+          name: centos7basesystemd
+          compose_file: docker-compose.systemd.yml
+          build_service: centos7basesystemd
+      - docker-rpmbuild/image:
+          name: centos8basesystemd
+          compose_file: docker-compose.systemd.yml
+          build_service: centos8basesystemd
+      - docker-rpmbuild/image:
+          name: webrepo
+          compose_file: docker-compose.yml
+          build_service: webrepo
+          shorttag: false
+      - docker-rpmbuild/image:
+          name: centos7repo
+          compose_file: docker-compose.yml
+          build_service: centos7repo
+          shorttag: false
+      - docker-rpmbuild/image:
+          name: centos6build
+          compose_file: docker-compose.yml
+          build_service: centos6build
+          requires:
+            - centos6base
+      - docker-rpmbuild/image:
+          name: centos7build
+          compose_file: docker-compose.yml
+          build_service: centos7build
+          requires:
+            - centos7base
+      - docker-rpmbuild/image:
+          name: centos7buildroot
+          compose_file: docker-compose.yml
+          build_service: centos7buildroot
+          requires:
+            - centos7baseroot
+      - docker-rpmbuild/image:
+          name: centos8build
+          compose_file: docker-compose.yml
+          build_service: centos8build
+          requires:
+            - centos8base
+      - docker-rpmbuild/image:
+          name: centos8buildroot
+          compose_file: docker-compose.yml
+          build_service: centos8buildroot
+          requires:
+            - centos8baseroot
+      - docker-rpmbuild/image:
+          name: centos7buildsystemd
+          compose_file: docker-compose.systemd.yml
+          build_service: centos7buildsystemd
+          requires:
+            - centos7basesystemd
+      - docker-rpmbuild/image:
+          name: centos8buildsystemd
+          compose_file: docker-compose.systemd.yml
+          build_service: centos8buildsystemd
+          requires:
+            - centos8basesystemd
+      - docker-rpmbuild/image:
+          name: centos7bintray
+          compose_file: docker-compose.bintray.yml
+          build_service: centos7bintray
+          shorttag: false
+          requires:
+            - centos7base
+      - docker-rpmbuild/image:
+          name: centos7ftptray
+          compose_file: docker-compose.ftptray.yml
+          build_service: centos7ftptray
+          shorttag: false
+          requires:
+            - centos7base
+      - docker-rpmbuild/image:
+          name: centos7refresh
+          compose_file: docker-compose.refresh.yml
+          build_service: centos7refresh
+          shorttag: false
+          requires:
+            - centos7repo
+      - docker-rpmbuild/image:
+          name: ftprepo
+          compose_file: docker-compose.ftptray.yml
+          build_service: ftprepo
+          shorttag: false
+          requires:
+            - centos7repo

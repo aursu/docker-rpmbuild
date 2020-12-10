@@ -1,4 +1,4 @@
-ARG centos=8.2.2004
+ARG centos=8.3.2011
 FROM aursu/centos:${centos}-scm
 
 ARG builduser=centos
