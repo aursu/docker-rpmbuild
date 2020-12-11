@@ -2,13 +2,14 @@ ARG centos=8.3.2011
 ARG image=base
 FROM aursu/rpmbuild:${centos}-${image}
 
-ENV LANG=C
+ENV LANG=en_US.UTF-8
 
 # install RPM build tools and assets
 RUN dnf -y install \
         rpm-build \
         dnf-utils \
         epel-rpm-macros \
+        dnf-plugins-core \
     && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 COPY system/etc/yum.repos.d/custom.repo /etc/yum.repos.d/custom.repo
@@ -26,6 +27,7 @@ RUN dnf config-manager --set-enabled PowerTools \
         libtool \
         make \
         which \
+        glibc-langpack-en \
     && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 VOLUME ${BUILD_TOPDIR}/SRPMS ${BUILD_TOPDIR}/RPMS
