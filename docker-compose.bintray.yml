@@ -9,18 +9,12 @@ services:
       args:
         centos: $OS7
     image: aursu/rpmbuild:bintray
-  centos6bintray:
-    volumes:
-      - rpm6:/home/centos/rpmbuild/RPMS
-    image: aursu/rpmbuild:bintray
   centos8bintray:
     volumes:
       - rpm8:/home/centos/rpmbuild/RPMS
     image: aursu/rpmbuild:bintray
 
 volumes:
-  rpm6:
-    name: rpm6
   rpm7:
     name: rpm7
   rpm8:
