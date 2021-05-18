@@ -12,11 +12,11 @@ RUN yum -y install \
 COPY system/etc/proftpd.conf /etc/proftpd.conf
 
 # create rpmbuild structure for user root
-RUN mkdir -p /home/centos-{7,8}/rpmbuild/RPMS \
-    && chown -R centos:centos /home/centos-{7,8}
+RUN mkdir -p /home/centos-{7,8,stream}/rpmbuild/RPMS \
+    && chown -R centos:centos /home/centos-{7,8,stream}
 
 RUN mkdir /etc/ftpd \
-    && for u in centos-7 centos-8; do \
+    && for u in centos-7 centos-8 centos-stream; do \
         echo -n "" | ftpasswd --passwd --file=/etc/ftpd/passwd \
         --name=$u \
         --uid=48 --gid=48 \
