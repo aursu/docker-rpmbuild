@@ -12,7 +12,6 @@ RUN dnf -y install \
         dnf-plugins-core \
     && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
-COPY system/etc/yum.repos.d/custom.repo /etc/yum.repos.d/custom.repo
 COPY system/etc/yum.repos.d/bintray-custom.repo /etc/yum.repos.d/bintray-custom.repo
 
 # install common build tools (autotools, compilers, parsers etc)
