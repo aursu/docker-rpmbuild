@@ -190,9 +190,9 @@ class Artifactory(ErrorPrintInterface):
   def __init__(self, url, repo, secret, username = None):
     self.secret = secret
     self.username = username
-    self.repo = repo
     self.set_url(url)
     self.set_curl()
+    self.set_repo(repo)
 
   def set_url(self, url):
     url_info = urlparse(url)
@@ -253,13 +253,13 @@ class Artifactory(ErrorPrintInterface):
       raise ArtifactoryError('Send attempts exceeded')
 
   def set_package(self, package):
-      rpmpackage = RPMPackage(package)
-      if rpmpackage.name():
-          self.package = rpmpackage
-          self.update_stats()
+    rpmpackage = RPMPackage(package)
+    if rpmpackage.name():
+      self.package = rpmpackage
+      self.update_stats()
 
   def package_files(self):
-    if self.package:
+    if self.repo and self.package:
       query = {
         "rpm.metadata.name": self.package.name(),
         "repos": self.repo
@@ -278,15 +278,143 @@ class Artifactory(ErrorPrintInterface):
     return None
 
   def update_stats(self):
-    if self.package:
-        self.files = self.package_files()
-        # sort it out
-        if len(self.files) > 0:
-          self.files.sort(key = lambda x: LooseVersion(x['path']))
-          self.remote = True
+    self.files = self.package_files()
+    if self.files:
+      # sort it
+      self.files.sort(key = lambda x: LooseVersion(x['path']))
+      self.remote = True
+    else:
+      self.remote = False
 
-  def check_package_exists(self):
-      return self.remote
+  def remote_package_info(self):
+    if self.remote:
+      package_info = filter(
+        lambda p:
+          p["properties"]["rpm.metadata.name"]    == self.package.name() and \
+          p["properties"]["rpm.metadata.version"] == self.package.version() and \
+          p["properties"]["rpm.metadata.release"] == self.package.release(),
+        self.files)
+      if package_info: # if not empty dict
+        return package_info[0]
+    return {}
+
+  def check_package_exist(self, match_version = False):
+    if self.remote:
+      if match_version:
+        if self.remote_package_info(): # if not empty hash
+          return True
+      else:
+        return True
+    return False
+
+  def check_file_exist(self):
+    package_info = self.remote_package_info()
+    if package_info:
+      return package_info["checksums"]["sha256"] == self.package.sha256sum()
+    return False
+
+  # https://www.jfrog.com/confluence/display/JFROG/Artifactory+REST+API#ArtifactoryRESTAPI-GetRepositories
+  def check_repo(self, repo):
+    if isinstance(repo, str) and repo:
+      query = {
+        "type": "local",
+        "packageType": "yum"
+      }
+      req = "%(url)s/api/repositories?%(query)s" % {
+        "url": self.url,
+        "query": urllib.parse.urlencode(query)
+      }
+      resp = self.send(req)
+
+      if resp.code == 200:
+        return len(filter(lambda x: x["key"] == repo, json.load(resp))) > 0
+    return False
+
+  def set_repo(self, repo):
+    if self.check_repo(repo):
+      self.repo = repo
+
+  def delete_content(self, path):
+    if not self.remote:
+        return None
+    check = filter(lambda p: p['path'] == path, self.files)
+    if check:
+      req = "%(url)s/%(repo)s/%(path)s" % {
+        "url": self.url,
+        "repo": self.repo,
+        "path": path
+      }
+      resp = self.send(req, method='DELETE')
+
+      # HTTP/1.1 200 OK
+      # HTTP/1.1 204 No Content
+      if resp.code in [200, 204]:
+        self.update_stats()
+        return True
+      return False
+    return None
+
+  def cleanup_packages(self, keep_version = True, keep = 2):
+    if not self.remote:
+      return None
+
+    # filter by distribution
+    dist = '.' + self.package.dist()
+    distfiles = filter(
+        lambda p:
+          p["properties"]["rpm.metadata.arch"] == self.package.arch() and \
+          dist in p["properties"]["rpm.metadata.release"],
+        self.files)
+
+    # filter by version
+    if keep_version:
+      verfiles = filter(lambda p: p["properties"]["rpm.metadata.version"] == self.package.version(), distfiles)
+    else:
+      verfiles = distfiles
+
+    cleanup = []
+    if len(verfiles) > keep:
+        cleanup = verfiles[:-keep]
+
+    status = False
+    for p in cleanup:
+      if self.delete_content(p['path']):
+        status = True
+
+    return status
+
+  def delete_package(self):
+    package_info = self.remote_package_info()
+    if package_info:
+      return self.delete_content(package_info["path"])
+    return None
+
+  def upload_content(self, path = None):
+    if self.repo and self.package:
+      if path is None:
+        path = "%(osname)s/%(osmajor)s" % {
+          'osname': self.package.osname(),
+          'osmajor': self.package.osmajor()
+        }
+
+      req = "%(url)s/%(repo)s/%(path)s/%(filename)s" % {
+        "url": self.url,
+        "repo": self.repo,
+        "path": path,
+        "filename": self.package.filename()
+      }
+
+      with open(self.package.path(), 'rb') as fp:
+        reqobj = urllib.request.Request(
+          req,
+          data = fp.read(),
+          headers = { 'Content-Length': self.package.size() },
+          method = 'PUT')
+        resp = self.send(reqobj)
+        if resp.code == 201:
+          self.update_stats()
+          return True
+    return None
 
 class Application(ErrorPrintInterface):
   # CLI options parser
@@ -302,6 +430,7 @@ class Application(ErrorPrintInterface):
   secret = None
   repo = None
   url = None
+  path = None
 
   packages = None
 
@@ -383,6 +512,7 @@ class Application(ErrorPrintInterface):
       "ARTIFACTORY_REPO": "repo",
       "ARTIFACTORY_PASSWORD": "password",
       "ARTIFACTORY_URL": "url",
+      "REPO_PATH": "path"
     }
 
     for e in process_list:
@@ -447,6 +577,12 @@ class Application(ErrorPrintInterface):
       self.repo = self.args.repo
     elif "repo" in self.envs:
       self.repo = self.envs["repo"]
+
+    # Repo path
+    if self.args.path:
+      self.path = self.args.path
+    elif "path" in self.envs:
+      self.path = self.envs["path"]
 
     # Packages
     self.get_packages_list(self.args.files)
@@ -521,12 +657,27 @@ class Application(ErrorPrintInterface):
 
   def run(self):
     self.setup()
+
     a = Artifactory(self.url, self.repo, self.secret, self.username)
+    for p in self.packages:
+      a.set_package(p)
 
-    p = self.packages[-1]
-    a.set_package(p)
+      # Delete package if option is set
+      if self.args.delete and a.delete_package():
+        print("Package %s removed from Bintray repo %s" % (a.package.name(), a.repo))
+        continue
 
-    print(a.files)
+      # Upload package
+      if not a.check_file_exist():
+        if a.upload_content(self.path):
+          print("Package %s uploaded into Bintray repo %s" % (a.package.filename(), a.repo))
+      else:
+          print("Package %s already exists in Bintray repo %s" % (a.package.filename(), a.repo))
+
+      # Cleanup on upload
+      if self.args.cleanup:
+        if a.cleanup_packages():
+          print("Bintray repo %s has been cleaned up" % a.repo)
 
 def main():
   a = Application()
