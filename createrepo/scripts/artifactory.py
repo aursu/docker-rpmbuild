@@ -8,8 +8,16 @@ import hashlib
 import rpm
 import urllib.request
 from urllib.parse import urlparse
+import http.client
 import base64
 import re
+import json
+from distutils.version import LooseVersion
+
+# global
+debugmode = False
+if 'BINTRAY_DEBUG' in os.environ:
+    debugmode = True
 
 class ErrorPrintInterface(object):
 
@@ -114,6 +122,16 @@ class RPMPackage(ErrorPrintInterface):
   def url(self):
       return self.getPackageAttr(rpm.RPMTAG_URL)
 
+class ArtifactoryError(Exception):
+    """Artifactory exception"""
+
+    def __init__(self, *args):
+        Exception.__init__(self, *args)
+        try:
+            self.response = args[0]
+        except IndexError:
+            self.response = 'No response given'
+
 class ArtifactoryBasicAuthHandler(urllib.request.HTTPBasicAuthHandler):
   def _auth_credentials(self, realm, host):
     user, secret = self.passwd.find_user_password(realm, host)
@@ -154,12 +172,20 @@ class ArtifactoryBasicAuthHandler(urllib.request.HTTPBasicAuthHandler):
 
     return req
 
-class Artifactory(object):
+class Artifactory(ErrorPrintInterface):
   url = None
   username = None
   secret = None
   curl = None
   repo = None
+
+  package = None
+
+  # list of files uploaded to Bintray for this package
+  files = None
+
+  # True if package already exists in repo
+  remote = None
 
   def __init__(self, url, repo, secret, username = None):
     self.secret = secret
@@ -170,7 +196,7 @@ class Artifactory(object):
 
   def set_url(self, url):
     url_info = urlparse(url)
-    self.url = "%s://%s/artifactory/" % (url_info.scheme, url_info.netloc)
+    self.url = "%s://%s/artifactory" % (url_info.scheme, url_info.netloc)
 
   def set_curl(self):
     self.curl = urllib.request.build_opener()
@@ -185,6 +211,82 @@ class Artifactory(object):
     auth_handler = ArtifactoryBasicAuthHandler(password_mgr)
     if self.curl:
       self.curl.add_handler(auth_handler)
+
+  def send(self, req, data = None, headers = {}, method = None):
+    attempts = 4
+
+    if isinstance(req, str):
+      req = urllib.request.Request(req, data, headers, method = method)
+
+    while attempts:
+      try:
+        return self.curl.open(req)
+      except urllib.error.HTTPError as e:
+        if debugmode:
+          self.error_print("URL: %s" % req.full_url)
+          self.error_print("Method: %s" % req.method)
+          self.error_print("Request Headers: %s" % req.header_items())
+          self.error_print("Error Message: %s" % str(e))
+          self.error_print("Error Headers: %s" % e.hdrs)
+        if e.code == 401:
+          self.set_curl()
+          attempts -= 1
+          continue
+        raise e
+      except urllib.error.URLError as e:
+        # DNS error could appear
+        if 'Name or service not known' in str(e.reason):
+          self.set_curl()
+          attempts -= 1
+          continue
+        elif 'EOF occurred in violation of protocol' in str(e.reason):
+          self.set_curl()
+          attempts -= 1
+          continue
+        raise e
+      except http.client.BadStatusLine:
+        self.set_curl()
+        attempts -= 1
+        continue
+      break
+    if attempts == 0:
+      raise ArtifactoryError('Send attempts exceeded')
+
+  def set_package(self, package):
+      rpmpackage = RPMPackage(package)
+      if rpmpackage.name():
+          self.package = rpmpackage
+          self.update_stats()
+
+  def package_files(self):
+    if self.package:
+      query = {
+        "rpm.metadata.name": self.package.name(),
+        "repos": self.repo
+      }
+      req = "%(url)s/api/search/prop?%(query)s" % {
+        "url": self.url,
+        "query": urllib.parse.urlencode(query)
+      }
+      headers = {
+        "X-Result-Detail": "info, properties"
+      }
+
+      resp = self.send(req, headers = headers)
+      if resp.code == 200:
+        return json.load(resp)["results"]
+    return None
+
+  def update_stats(self):
+    if self.package:
+        self.files = self.package_files()
+        # sort it out
+        if len(self.files) > 0:
+          self.files.sort(key = lambda x: LooseVersion(x['path']))
+          self.remote = True
+
+  def check_package_exists(self):
+      return self.remote
 
 class Application(ErrorPrintInterface):
   # CLI options parser
@@ -420,8 +522,11 @@ class Application(ErrorPrintInterface):
   def run(self):
     self.setup()
     a = Artifactory(self.url, self.repo, self.secret, self.username)
-    req = urllib.request.Request("https://rpmb.jfrog.io/artifactory/custom/fedora", method="PUT")
-    a.curl.open(req)
+
+    p = self.packages[-1]
+    a.set_package(p)
+
+    print(a.files)
 
 def main():
   a = Application()
