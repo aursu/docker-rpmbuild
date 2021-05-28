@@ -57,7 +57,7 @@ class RPMPackage(ErrorPrintInterface):
 
   def getPackageAttr(self, attr):
       if self.hdr:
-        return self.hdr[attr]
+        return self.hdr[attr].decode('utf-8')
       return None
 
   def path(self):
@@ -90,7 +90,7 @@ class RPMPackage(ErrorPrintInterface):
       if release and '.' in release:
           # only CentOS (el) and Fedora (fc) supported
           relinfo = release.split('.')
-          disttag = filter(lambda x: len(x) > 2 and x[:2] in ['el', 'fc'], relinfo)
+          disttag = list(filter(lambda x: len(x) > 2 and x[:2] in ['el', 'fc'], relinfo))
           if len(disttag) > 0:
             # in case of el6_8, el6_3.1 etc
             return disttag[0].split('_')[0]
@@ -171,6 +171,11 @@ class ArtifactoryBasicAuthHandler(urllib.request.HTTPBasicAuthHandler):
         req.add_unredirected_header(auth_header, auth)
 
     return req
+
+  def http_error_403(self, req, fp, code, msg, headers):
+    if req.method == 'DELETE':
+      url = req.full_url
+      return self.retry_http_basic_auth(url, req, None)
 
 class Artifactory(ErrorPrintInterface):
   url = None
@@ -277,23 +282,32 @@ class Artifactory(ErrorPrintInterface):
         return json.load(resp)["results"]
     return None
 
+  def update_package_info(self, info):
+    if "properties" in info:
+      props = info["properties"]
+      info["properties"] = dict([(p, v[0] if isinstance(v, list) and len(v) == 1 else v) for p, v in props.items()])
+    return info
+
   def update_stats(self):
-    self.files = self.package_files()
-    if self.files:
+    files = self.package_files()
+    if files:
+      # adjust it
+      self.files = [self.update_package_info(f) for f in files]
       # sort it
       self.files.sort(key = lambda x: LooseVersion(x['path']))
       self.remote = True
     else:
+      self.files = None
       self.remote = False
 
   def remote_package_info(self):
     if self.remote:
-      package_info = filter(
+      package_info = list(filter(
         lambda p:
-          p["properties"]["rpm.metadata.name"]    == self.package.name() and \
+          p["properties"]["rpm.metadata.name"] == self.package.name() and \
           p["properties"]["rpm.metadata.version"] == self.package.version() and \
           p["properties"]["rpm.metadata.release"] == self.package.release(),
-        self.files)
+        self.files))
       if package_info: # if not empty dict
         return package_info[0]
     return {}
@@ -324,10 +338,11 @@ class Artifactory(ErrorPrintInterface):
         "url": self.url,
         "query": urllib.parse.urlencode(query)
       }
-      resp = self.send(req)
 
+      resp = self.send(req)
       if resp.code == 200:
-        return len(filter(lambda x: x["key"] == repo, json.load(resp))) > 0
+        repo_match = list(filter(lambda x: x["key"] == repo, json.load(resp)))
+        return len(repo_match) > 0
     return False
 
   def set_repo(self, repo):
@@ -337,7 +352,7 @@ class Artifactory(ErrorPrintInterface):
   def delete_content(self, path):
     if not self.remote:
         return None
-    check = filter(lambda p: p['path'] == path, self.files)
+    check = list(filter(lambda p: p['path'] == path, self.files))
     if check:
       req = "%(url)s/%(repo)s/%(path)s" % {
         "url": self.url,
@@ -368,9 +383,9 @@ class Artifactory(ErrorPrintInterface):
 
     # filter by version
     if keep_version:
-      verfiles = filter(lambda p: p["properties"]["rpm.metadata.version"] == self.package.version(), distfiles)
+      verfiles = list(filter(lambda p: p["properties"]["rpm.metadata.version"] == self.package.version(), distfiles))
     else:
-      verfiles = distfiles
+      verfiles = list(distfiles)
 
     cleanup = []
     if len(verfiles) > keep:
@@ -532,7 +547,7 @@ class Application(ErrorPrintInterface):
       if len(path) > 4 and path[-4:] == '.rpm' and os.path.isfile(path):
         packages = [path]
       elif os.path.isdir(path):
-        packages = filter(lambda p: os.path.isfile(p), glob.glob(path + "/**/*.rpm", recursive=True))
+        packages = list(filter(lambda p: os.path.isfile(p), glob.glob(path + "/**/*.rpm", recursive=True)))
       else:
         packages = []
 
@@ -663,8 +678,9 @@ class Application(ErrorPrintInterface):
       a.set_package(p)
 
       # Delete package if option is set
-      if self.args.delete and a.delete_package():
-        print("Package %s removed from Bintray repo %s" % (a.package.name(), a.repo))
+      if self.args.delete:
+        if a.delete_package():
+          print("Package %s removed from Bintray repo %s" % (a.package.name(), a.repo))
         continue
 
       # Upload package
