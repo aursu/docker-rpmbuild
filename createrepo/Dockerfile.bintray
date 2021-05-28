@@ -1,11 +1,16 @@
 ARG centos=7.9.2009
 FROM aursu/rpmbuild:${centos}-base
 
-COPY scripts/bintray.py /usr/local/bin/bintray.py
-RUN chmod 755 /usr/local/bin/bintray.py
+RUN yum -y install \
+		python3 \
+		python36-rpm \
+	&& yum clean all && rm -rf /var/cache/yum /var/lib/rpm/__db*
+
+COPY scripts/artifactory.py /usr/local/bin/artifactory.py
+RUN chmod 755 /usr/local/bin/artifactory.py
 
 VOLUME ${BUILD_TOPDIR}/RPMS
 
 USER $BUILD_USER
 
-CMD /usr/local/bin/bintray.py -c ${BUILD_TOPDIR}/RPMS
+CMD /usr/local/bin/artifactory.py -c ${BUILD_TOPDIR}/RPMS
