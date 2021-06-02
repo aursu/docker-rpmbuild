@@ -503,6 +503,12 @@ class Application(ErrorPrintInterface):
                       help="Cleanup packages (keep only 2 packages of "
                            "specified version) [default: %(default)s]")
 
+    self.__ap.add_argument("--newest-only",
+                      action="store_true",
+                      dest="newest_only",
+                      default=False,
+                      help="Keep only newest packages during cleanup [default: %(default)s]")
+
     self.__ap.add_argument("files",
                       metavar="FILE",
                       nargs='+',
@@ -692,8 +698,12 @@ class Application(ErrorPrintInterface):
 
       # Cleanup on upload
       if self.args.cleanup:
-        if a.cleanup_packages():
-          print("Bintray repo %s has been cleaned up" % a.repo)
+        if self.args.newest_only:
+          if a.cleanup_packages(keep_version = False, keep = 1):
+            print("Bintray repo %s has been cleaned up with only newest versions kept" % a.repo)
+        else:
+          if a.cleanup_packages():
+            print("Bintray repo %s has been cleaned up" % a.repo)
 
 def main():
   a = Application()
