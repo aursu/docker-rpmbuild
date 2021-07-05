@@ -1,0 +1,19 @@
+ARG centos=7.9.2009
+ARG image=rpmb
+FROM aursu/rpmbuild:${centos}-${image}
+
+ARG DOCKER_VERSION="20.10.7"
+ARG COMPOSE_VERSION="1.29.2"
+ARG RELEASE_URL="https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-Linux-x86_64"
+
+# install Docker CLI
+RUN yum-config-manager \
+        --add-repo \
+        https://download.docker.com/linux/centos/docker-ce.repo \
+    && yum -y install docker-ce-cli-${DOCKER_VERSION} \
+    && yum clean all && rm -rf /var/cache/yum /var/lib/rpm/__db*
+
+# install Docker Compose
+RUN curl -L ${RELEASE_URL} -o /usr/local/bin/docker-compose \
+    && chmod +x /usr/local/bin/docker-compose \
+    && ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose

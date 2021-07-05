@@ -59,6 +59,12 @@ workflows:
           requires:
             - centos7rpmb
       - docker-rpmbuild/image:
+          name: centos7docker
+          compose_file: docker-compose.yml
+          build_service: centos7docker
+          requires:
+            - centos7rpmb
+      - docker-rpmbuild/image:
           name: centos7buildroot
           compose_file: docker-compose.yml
           build_service: centos7buildroot

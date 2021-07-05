@@ -95,6 +95,10 @@ jobs:
     - stage: build
       env:
         - BUILD_COMPOSE_FILE=docker-compose.yml
+        - BUILD=centos7docker
+    - stage: build
+      env:
+        - BUILD_COMPOSE_FILE=docker-compose.yml
         - BUILD=centos7buildroot
     - stage: repo
       env:

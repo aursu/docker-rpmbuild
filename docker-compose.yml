@@ -33,6 +33,13 @@ services:
       args:
         centos: $OS7
     image: "aursu/rpmbuild:${OS7TAG}-rpmb"
+  centos7docker:
+    build:
+      context: 7/build
+      dockerfile: Dockerfile.docker
+      args:
+        centos: $OS7
+    image: "aursu/rpmbuild:${OS7TAG}-docker"
   centos7rpmbroot:
     build:
       context: 7/build
