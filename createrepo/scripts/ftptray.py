@@ -369,6 +369,7 @@ class Ftptray(ErrorPrintInterface):
   entrypoint = None
 
   repo = None
+  repo_label = None
 
   package = None
 
@@ -535,6 +536,7 @@ class Ftptray(ErrorPrintInterface):
 
   def set_repo(self, repo):
     if self.check_repo(repo):
+      self.repo_label = repo
       if repo == "custom":
         repo = "RPMS"
       self.repo = repo
@@ -559,10 +561,7 @@ class Ftptray(ErrorPrintInterface):
         if name in entry:
           pinfo = FTPRPMPackage(entry).to_json()
           if pinfo and pinfo['package'] == name:
-            if self.repo == 'RPMS':
-              pinfo['repo'] = 'custom'
-            else:
-              pinfo['repo'] = self.repo
+            pinfo['repo'] = self.repo_label
             if files is None:
               files = [pinfo]
             else:
@@ -798,12 +797,16 @@ class Application(ErrorPrintInterface):
     process_list = {
       "BINTRAY_USER": "username",
       "ARTIFACTORY_USER": "username",
+      "FTPTRAY_USER": "username",
       "BINTRAY_API_KEY": "apikey",
       "ARTIFACTORY_API_KEY": "apikey",
       "BINTRAY_REPO": "repo",
       "ARTIFACTORY_REPO": "repo",
+      "FTPTRAY_REPO": "repo",
       "ARTIFACTORY_PASSWORD": "password",
+      "FTPTRAY_PASSWORD": "password",
       "ARTIFACTORY_URL": "url",
+      "FTPTRAY_HOST": "url",
       "REPO_PATH": "path"
     }
 
@@ -899,17 +902,17 @@ class Application(ErrorPrintInterface):
     # Username is mandatory
     if not self.username:
       self.error_print("One of the argument -u/--user or "
-        "environment variable ARTIFACTORY_USER is required when password is in use")
+        "environment variable FTPTRAY_USER is required when password is in use")
       self.usage(True)
 
     if not self.repo:
       self.error_print("One of the arguments -r/--repo or "
-        "environment variable ARTIFACTORY_REPO is required")
+        "environment variable FTPTRAY_REPO is required")
       self.usage(True)
 
     if not self.url:
       self.error_print("One of the arguments -l/--url or "
-        "environment variable ARTIFACTORY_URL is required")
+        "environment variable FTPTRAY_HOST is required")
       self.usage(True)
     else:
       self.validate_url()
@@ -932,24 +935,24 @@ class Application(ErrorPrintInterface):
       # Delete package if option is set
       if self.args.delete:
         if a.delete_package():
-          print("Package %s removed from FTPtray repo %s" % (a.package.name(), a.repo))
+          print("Package %s removed from FTPtray repo %s" % (a.package.name(), a.repo_label))
         continue
 
       # Upload package
       if not a.check_file_exist():
         if a.upload_content():
-          print("Package %s uploaded into FTPtray repo %s" % (a.package.filename(), a.repo))
+          print("Package %s uploaded into FTPtray repo %s" % (a.package.filename(), a.repo_label))
       else:
-          print("Package %s already exists in FTPtray repo %s" % (a.package.filename(), a.repo))
+          print("Package %s already exists in FTPtray repo %s" % (a.package.filename(), a.repo_label))
 
       # Cleanup on upload
       if self.args.cleanup:
         if self.args.newest_only:
           if a.cleanup_packages(keep_version = False, keep = 1):
-            print("FTPtray repo %s has been cleaned up with only newest versions kept" % a.repo)
+            print("FTPtray repo %s has been cleaned up with only newest versions kept" % a.repo_label)
         else:
           if a.cleanup_packages():
-            print("FTPtray repo %s has been cleaned up" % a.repo)
+            print("FTPtray repo %s has been cleaned up" % a.repo_label)
 
 def main():
   a = Application()
