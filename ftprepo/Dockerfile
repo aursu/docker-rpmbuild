@@ -33,5 +33,5 @@ COPY scripts/ftphook.sh /usr/local/bin/ftphook.sh
 COPY scripts/proftpd-foreground /usr/local/bin/proftpd-foreground
 RUN chmod 755 /usr/local/bin/ftphook.sh /usr/local/bin/proftpd-foreground
 
-EXPOSE 21 49152-49160
+EXPOSE 20-21 49152-49160
 CMD ["proftpd-foreground"]
