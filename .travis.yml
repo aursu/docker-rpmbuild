@@ -13,10 +13,10 @@ addons:
 env:
   global:
     - OS7=7.9.2009
-    - OS8=8.3.2011
+    - OS8=8.4.2105
     - TAGDEPLOY=1
     - OS7TAG=7.9.2009
-    - OS8TAG=8.3.2011
+    - OS8TAG=8.4.2105
   jobs:
     - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=centos7base
     - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=centos7baseroot
