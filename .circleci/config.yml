@@ -23,6 +23,14 @@ workflows:
           compose_file: docker-compose.yml
           build_service: centos8baseroot
       - docker-rpmbuild/image:
+          name: stream8base
+          compose_file: docker-compose.yml
+          build_service: stream8base
+      - docker-rpmbuild/image:
+          name: stream8baseroot
+          compose_file: docker-compose.yml
+          build_service: stream8baseroot
+      - docker-rpmbuild/image:
           name: centos7basesystemd
           compose_file: docker-compose.systemd.yml
           build_service: centos7basesystemd
@@ -30,6 +38,10 @@ workflows:
           name: centos8basesystemd
           compose_file: docker-compose.systemd.yml
           build_service: centos8basesystemd
+      - docker-rpmbuild/image:
+          name: stream8basesystemd
+          compose_file: docker-compose.systemd.yml
+          build_service: stream8basesystemd
       - docker-rpmbuild/image:
           name: centos7rpmb
           compose_file: docker-compose.yml
@@ -83,6 +95,18 @@ workflows:
           requires:
             - centos8baseroot
       - docker-rpmbuild/image:
+          name: stream8build
+          compose_file: docker-compose.yml
+          build_service: centos8build
+          requires:
+            - stream8base
+      - docker-rpmbuild/image:
+          name: stream8buildroot
+          compose_file: docker-compose.yml
+          build_service: stream8buildroot
+          requires:
+            - stream8baseroot
+      - docker-rpmbuild/image:
           name: centos7buildsystemd
           compose_file: docker-compose.systemd.yml
           build_service: centos7buildsystemd
@@ -94,6 +118,12 @@ workflows:
           build_service: centos8buildsystemd
           requires:
             - centos8basesystemd
+      - docker-rpmbuild/image:
+          name: stream8buildsystemd
+          compose_file: docker-compose.systemd.yml
+          build_service: stream8buildsystemd
+          requires:
+            - stream8basesystemd
       - docker-rpmbuild/image:
           name: centos7bintray
           compose_file: docker-compose.bintray.yml

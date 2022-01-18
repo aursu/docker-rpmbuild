@@ -11,6 +11,14 @@ services:
     volumes:
       - rpm8:/home/centos/rpmbuild/RPMS
     image: aursu/rpmbuild:refresh
+  stream8refresh:
+    volumes:
+      - rpm8stream:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:refresh
+  stream9refresh:
+    volumes:
+      - rpm9stream:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:refresh
   centos7cleanup:
     volumes:
       - rpm7:/home/centos/rpmbuild/RPMS
@@ -23,9 +31,25 @@ services:
     environment:
       - REFRESH_ACTION=cleanup
     image: aursu/rpmbuild:refresh
+  stream8cleanup:
+    volumes:
+      - rpm8stream:/home/centos/rpmbuild/RPMS
+    environment:
+      - REFRESH_ACTION=cleanup
+    image: aursu/rpmbuild:refresh
+  stream9cleanup:
+    volumes:
+      - rpm9stream:/home/centos/rpmbuild/RPMS
+    environment:
+      - REFRESH_ACTION=cleanup
+    image: aursu/rpmbuild:refresh
 
 volumes:
   rpm7:
     name: rpm7
   rpm8:
     name: rpm8
+  rpm8stream:
+    name: rpm8stream
+  rpm9stream:
+    name: rpm9stream

@@ -14,6 +14,11 @@ services:
       args:
         centos: $OS8
     image: "aursu/rpmbuild:${OS8TAG}-base-systemd"
+  stream8basesystemd:
+    build:
+      context: 8-stream/base
+      dockerfile: Dockerfile.systemd
+    image: aursu/rpmbuild:stream8-base-systemd
   centos7buildsystemd:
     build:
       context: 7/build
@@ -28,6 +33,11 @@ services:
       args:
         centos: $OS8
     image: "aursu/rpmbuild:${OS8TAG}-build-systemd"
+  stream8buildsystemd:
+    build:
+      context: 8-stream/build
+      dockerfile: Dockerfile.systemd
+    image: aursu/rpmbuild:stream8-build-systemd
   centos7buildtest:
     networks:
       - buildnet

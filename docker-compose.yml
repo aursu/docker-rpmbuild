@@ -26,6 +26,15 @@ services:
       args:
         centos: $OS8
     image: "aursu/rpmbuild:${OS8TAG}-base-root"
+  stream8base:
+    build:
+      context: 8-stream/base
+    image: aursu/rpmbuild:stream8-base
+  stream8baseroot:
+    build:
+      context: 8-stream/base
+      dockerfile: Dockerfile.root
+    image: aursu/rpmbuild:stream8-base-root
   centos7rpmb:
     build:
       context: 7/build
@@ -74,6 +83,16 @@ services:
         centos: $OS8
         image: base-root
     image: "aursu/rpmbuild:${OS8TAG}-build-root"
+  stream8build:
+    build:
+      context: 8-stream/build
+    image: aursu/rpmbuild:stream8-build
+  stream8buildroot:
+    build:
+      context: 8-stream/build
+      args:
+        image: base-root
+    image: aursu/rpmbuild:stream8-build-root
   centos7repo:
     restart: always
     volumes:
@@ -92,12 +111,20 @@ services:
     image: aursu/rpmbuild:createrepo
     environment:
       - DELAY_PERIOD=30
+  stream8repo:
+    restart: always
+    volumes:
+      - rpm8stream:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:createrepo
+    environment:
+      - DELAY_PERIOD=30
   webrepo:
     networks:
       - buildnet
     volumes:
       - rpm7:/home/centos-7/rpmbuild/RPMS
       - rpm8:/home/centos-8/rpmbuild/RPMS
+      - rpm8stream:/home/stream-8/rpmbuild/RPMS
     build:
       context: webrepo
       args:
@@ -111,6 +138,8 @@ volumes:
     name: rpm7
   rpm8:
     name: rpm8
+  rpm8stream:
+    name: rpm8stream
 
 networks:
   buildnet:
