@@ -97,7 +97,7 @@ workflows:
       - docker-rpmbuild/image:
           name: stream8build
           compose_file: docker-compose.yml
-          build_service: centos8build
+          build_service: stream8build
           requires:
             - stream8base
       - docker-rpmbuild/image:

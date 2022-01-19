@@ -19,7 +19,7 @@ services:
     image: aursu/rpmbuild:ftptray
   stream9ftptray:
     volumes:
-      - rpm8stream:/home/centos/rpmbuild/RPMS
+      - rpm9stream:/home/centos/rpmbuild/RPMS
     image: aursu/rpmbuild:ftptray
   ftprepo:
     volumes:
