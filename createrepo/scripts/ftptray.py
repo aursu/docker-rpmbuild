@@ -25,46 +25,137 @@ FTP_OK           = 250
 FTP_PWD_OK       = 257
 
 class ErrorPrintInterface(object):
+  def __init__(self, *args,  **kwargs):
+    pass
+
   def error_print(self, msg):
     print(msg, file=sys.stderr)
 
-class FTPRequest(Request):
-  lines = None
-  port = None
+class Package(object):
+  package = None
+  _name = None
+  _size = None
+  _filename = None
+  _version = None
+  _release = None
+  _dist = None
+  _arch = None
+  created = None
+  user = None
+  json = None
+  sha256 = None
 
-  def __init__(self, url, data=None, headers={},
-                origin_req_host=None, unverifiable=False,
-                method=None):
-    Request.__init__(self, url, data, headers, origin_req_host, unverifiable, method)
-    self.type = 'ftp'
-    if self.port is None:
-        self.port = ftplib.FTP_PORT
-    self.reset()
+  def __init__(self, package):
+    self.set_path(package)
 
-  def get_selector(self):
-      return self.selector
+  def set_path(self, package):
+    self.package = package
 
   def get_path(self):
-      path = self.get_selector()
-      if path[0] == '/':
-          return path[1:]
-      return path
+    return self.package
 
-  def add_line(self, line):
-      self.lines += [line]
+  def path(self):
+    return self.get_path()
 
-  def reset(self):
-      self.lines = []
+  def get_name(self):
+    return self._name
 
-class RPMPackage(ErrorPrintInterface):
-  package = None
-  sha256 = None
+  def name(self):
+    return self.get_name()
+
+  def get_size(self):
+    return self._size
+
+  def size(self):
+    return self.get_size()
+
+  def get_filename(self):
+    return self._filename
+
+  def filename(self):
+    return self.get_filename()
+
+  def get_version(self):
+    return self._version
+
+  def version(self):
+    return self.get_version()
+
+  def get_release(self):
+    return self._release
+
+  def release(self):
+    return self.get_release()
+
+  def get_dist(self):
+    return self._dist
+
+  def dist(self):
+    return self.get_dist()
+
+  def osname(self):
+    dist = self.get_dist()
+    if dist and dist[:2] == 'fc':
+      return 'fedora'
+    if dist and dist[:2] == 'el':
+      return 'centos'
+    return None
+
+  def osmajor(self):
+    dist = self.get_dist()
+    if self.osname():
+      try:
+        return int(dist[2:])
+      except ValueError:
+        pass
+    return None
+
+  def get_arch(self):
+    return self._arch
+
+  def arch(self):
+    return self.get_arch()
+
+  def sha256sum(self):
+    return self.sha256
+
+  def to_json(self):
+    # {
+    #   u'name': u'httpd-2.4.41-1.el6.x86_64.rpm',
+    #   u'package': u'httpd',
+    #   u'created': u'2019-08-15T12:10:06.176Z',
+    #   u'version': u'2.4.41',
+    #   u'owner': u'aursu',
+    #   u'path': u'centos/6/httpd-2.4.41-1.el6.x86_64.rpm',
+    #   u'size': 983096
+    # },
+    self.json = None
+    if self.get_path():
+      self.json = { 'name': self.get_filename() }
+      self.json['path'] = self.get_path()
+      self.json['package'] = self.get_name()
+      if self.created: self.json['created'] = self.created
+      self.json['version'] = self.get_version()
+      if self.user: self.json['owner'] = self.user
+      if self.get_size(): self.json['size'] = self.get_size()
+      self.json['properties'] = {
+        'rpm.metadata.name': self.get_name(),
+        'rpm.metadata.version': self.get_version(),
+        'rpm.metadata.release': self.get_release(),
+        'rpm.metadata.arch': self.get_arch()
+      }
+    return self.json
+
+class RPMPackage(Package, ErrorPrintInterface):
   hdr = None
 
   def __init__(self, package):
+    super().__init__(package)
+    self.hdrFromPackage()
+
+  def set_path(self, package):
     if os.path.isfile(package):
       self.package = package
-      self.hdrFromPackage()
       self.__hash()
 
   def __hash(self):
@@ -92,33 +183,27 @@ class RPMPackage(ErrorPrintInterface):
         return self.hdr[attr].decode('utf-8')
       return None
 
-  def path(self):
-    return self.package
-
-  def size(self):
+  def get_size(self):
     if self.package:
       return os.stat(self.package).st_size
     return None
 
-  def filename(self):
+  def get_filename(self):
     if self.package:
       return os.path.basename(self.package)
     return None
 
-  def sha256sum(self):
-    return self.sha256
-
-  def name(self):
+  def get_name(self):
       return self.getPackageAttr(rpm.RPMTAG_NAME)
 
-  def version(self):
+  def get_version(self):
       return self.getPackageAttr(rpm.RPMTAG_VERSION)
 
-  def release(self):
+  def get_release(self):
       return self.getPackageAttr(rpm.RPMTAG_RELEASE)
 
-  def dist(self):
-      release = self.release()
+  def get_dist(self):
+      release = self.get_release()
       if release and '.' in release:
           # only CentOS (el) and Fedora (fc) supported
           relinfo = release.split('.')
@@ -128,24 +213,7 @@ class RPMPackage(ErrorPrintInterface):
             return disttag[0].split('_')[0]
       return None
 
-  def osname(self):
-      dist = self.dist()
-      if dist and dist[:2] == 'fc':
-          return 'fedora'
-      if dist and dist[:2] == 'el':
-          return 'centos'
-      return None
-
-  def osmajor(self):
-      dist = self.dist()
-      if self.osname():
-          try:
-              return int(dist[2:])
-          except ValueError:
-              pass
-      return None
-
-  def arch(self):
+  def get_arch(self):
       return self.getPackageAttr(rpm.RPMTAG_ARCH)
 
   def desc(self):
@@ -154,28 +222,20 @@ class RPMPackage(ErrorPrintInterface):
   def url(self):
       return self.getPackageAttr(rpm.RPMTAG_URL)
 
-class FTPRPMPackage(object):
-  package = None
-  arch = None
-  name = None
-  version = None
-  release = None
+class FTPRPMPackage(Package):
   osid = None
-  dist = None
   relmaj = None
   relmin = None
-  size = None
-  user = None
   group = None
-  created = None
-
-  json = None
 
   def __init__(self, package):
-    if ' ' in package:
-      self.set_dirlist_entry(package)
-    else:
-      self.set_package(package)
+    super().__init__(package)
+
+  def set_size(self, size):
+    try:
+      self._size = int(size)
+    except ValueError:
+      self._size = None
 
   def set_package(self, package):
     self.package = None
@@ -194,7 +254,7 @@ class FTPRPMPackage(object):
         __p_release, arch = __p_arch.rsplit(".", 1)
 
         if arch in ['noarch', 'i686', 'x86_64']:
-          self.arch = arch
+          self._arch = arch
         else:
           # wrong arch or wrong package name
           return None
@@ -226,72 +286,14 @@ class FTPRPMPackage(object):
         # awscli-1.14.28-5.el7_5.1.noarch.rpm
         # ca-certificates-2018.2.22-70.0.el7_5.noarch.rpm
         self.package = package
-        self.filename = filename
-        self.name = name       # ca-certificates # awscli
-        self.version = version # 2018.2.22       # 1.14.28
-        self.release = release # 70.0.el7_5      # 5.el7_5.1
+        self._filename = filename
+        self._name = name       # ca-certificates # awscli
+        self._version = version # 2018.2.22       # 1.14.28
+        self._release = release # 70.0.el7_5      # 5.el7_5.1
         self.osid = osid       # el              # el
-        self.dist = dist       # el7_5           # el7_5
+        self._dist = dist       # el7_5           # el7_5
         self.relmaj = relmaj   # 70.0            # 5
         self.relmin = relmin   # None            # 1
-
-  def set_size(self, size):
-    try:
-      self.size = int(size)
-    except ValueError:
-      self.size = None
-
-  def get_path(self):
-    return self.package
-
-  def get_size(self):
-    if self.package:
-      return self.size
-    return None
-
-  def get_filename(self):
-    if self.package:
-      return self.filename
-    return None
-
-  def get_name(self):
-    if self.package:
-      return self.name
-
-  def get_version(self):
-    if self.package:
-      return self.version
-
-  def get_release(self):
-    if self.package:
-      return self.release
-
-  def get_dist(self):
-    if self.package:
-      # in case of el6_8, el6_3 etc
-      return  self.dist.split('_')[0]
-    return None
-
-  def osname(self):
-    dist = self.dist()
-    if dist and dist[:2] == 'fc':
-      return 'fedora'
-    if dist and dist[:2] == 'el':
-      return 'centos'
-    return None
-
-  def osmajor(self):
-    dist = self.dist()
-    if self.osname():
-      try:
-        return int(dist[2:])
-      except ValueError:
-        pass
-    return None
-
-  def get_arch(self):
-    if self.package:
-      return self.arch
 
   def set_dirlist_entry(self, entry):
     # -rw-r--r--   1 centos-8 centos   12185279 Oct  4 16:21 php-7.3.9-1.fc31.src.rpm
@@ -328,32 +330,71 @@ class FTPRPMPackage(object):
           if d:
             self.created = d.isoformat()
 
-  def to_json(self):
-    # {
-    #   u'name': u'httpd-2.4.41-1.el6.x86_64.rpm',
-    #   u'package': u'httpd',
-    #   u'created': u'2019-08-15T12:10:06.176Z',
-    #   u'version': u'2.4.41',
-    #   u'owner': u'aursu',
-    #   u'path': u'centos/6/httpd-2.4.41-1.el6.x86_64.rpm',
-    #   u'size': 983096
-    # },
-    self.json = None
+  def set_path(self, package):
+    if ' ' in package:
+      self.set_dirlist_entry(package)
+    else:
+      self.set_package(package)
+
+  def get_size(self):
     if self.package:
-      self.json = { 'name': self.filename }
-      self.json['path'] = self.package
-      self.json['package'] = self.name
-      if self.created: self.json['created'] = self.created
-      self.json['version'] = self.version
-      if self.user: self.json['owner'] = self.user
-      if self.size: self.json['size'] = self.size
-      self.json['properties'] = {
-        'rpm.metadata.name': self.name,
-        'rpm.metadata.version': self.version,
-        'rpm.metadata.release': self.release,
-        'rpm.metadata.arch': self.arch
-      }
-    return self.json
+      return self._size
+    return None
+
+  def get_filename(self):
+    if self.package:
+      return self._filename
+    return None
+
+  def get_name(self):
+    if self.package:
+      return self._name
+
+  def get_version(self):
+    if self.package:
+      return self._version
+
+  def get_release(self):
+    if self.package:
+      return self._release
+
+  def get_dist(self):
+    if self.package:
+      # in case of el6_8, el6_3 etc
+      return  self._dist.split('_')[0]
+    return None
+
+  def get_arch(self):
+    if self.package:
+      return self._arch
+
+class FTPRequest(Request):
+  lines = None
+  port = None
+
+  def __init__(self, url, data=None, headers={},
+                origin_req_host=None, unverifiable=False,
+                method=None):
+    Request.__init__(self, url, data, headers, origin_req_host, unverifiable, method)
+    self.type = 'ftp'
+    if self.port is None:
+        self.port = ftplib.FTP_PORT
+    self.reset()
+
+  def get_selector(self):
+      return self.selector
+
+  def get_path(self):
+      path = self.get_selector()
+      if path[0] == '/':
+          return path[1:]
+      return path
+
+  def add_line(self, line):
+      self.lines += [line]
+
+  def reset(self):
+      self.lines = []
 
 class Ftptray(ErrorPrintInterface):
   url = None

@@ -13,6 +13,7 @@ import base64
 import re
 import json
 from distutils.version import LooseVersion
+from datetime import datetime
 
 # global
 debugmode = False
@@ -20,19 +21,137 @@ if 'BINTRAY_DEBUG' in os.environ:
     debugmode = True
 
 class ErrorPrintInterface(object):
+  def __init__(self, *args,  **kwargs):
+    pass
 
   def error_print(self, msg):
     print(msg, file=sys.stderr)
 
-class RPMPackage(ErrorPrintInterface):
+class Package(object):
   package = None
+  _name = None
+  _size = None
+  _filename = None
+  _version = None
+  _release = None
+  _dist = None
+  _arch = None
+  created = None
+  user = None
+  json = None
   sha256 = None
+
+  def __init__(self, package):
+    self.set_path(package)
+
+  def set_path(self, package):
+    self.package = package
+
+  def get_path(self):
+    return self.package
+
+  def path(self):
+    return self.get_path()
+
+  def get_name(self):
+    return self._name
+
+  def name(self):
+    return self.get_name()
+
+  def get_size(self):
+    return self._size
+
+  def size(self):
+    return self.get_size()
+
+  def get_filename(self):
+    return self._filename
+
+  def filename(self):
+    return self.get_filename()
+
+  def get_version(self):
+    return self._version
+
+  def version(self):
+    return self.get_version()
+
+  def get_release(self):
+    return self._release
+
+  def release(self):
+    return self.get_release()
+
+  def get_dist(self):
+    return self._dist
+
+  def dist(self):
+    return self.get_dist()
+
+  def osname(self):
+    dist = self.get_dist()
+    if dist and dist[:2] == 'fc':
+      return 'fedora'
+    if dist and dist[:2] == 'el':
+      return 'centos'
+    return None
+
+  def osmajor(self):
+    dist = self.get_dist()
+    if self.osname():
+      try:
+        return int(dist[2:])
+      except ValueError:
+        pass
+    return None
+
+  def get_arch(self):
+    return self._arch
+
+  def arch(self):
+    return self.get_arch()
+
+  def sha256sum(self):
+    return self.sha256
+
+  def to_json(self):
+    # {
+    #   u'name': u'httpd-2.4.41-1.el6.x86_64.rpm',
+    #   u'package': u'httpd',
+    #   u'created': u'2019-08-15T12:10:06.176Z',
+    #   u'version': u'2.4.41',
+    #   u'owner': u'aursu',
+    #   u'path': u'centos/6/httpd-2.4.41-1.el6.x86_64.rpm',
+    #   u'size': 983096
+    # },
+    self.json = None
+    if self.get_path():
+      self.json = { 'name': self.get_filename() }
+      self.json['path'] = self.get_path()
+      self.json['package'] = self.get_name()
+      if self.created: self.json['created'] = self.created
+      self.json['version'] = self.get_version()
+      if self.user: self.json['owner'] = self.user
+      if self.get_size(): self.json['size'] = self.get_size()
+      self.json['properties'] = {
+        'rpm.metadata.name': self.get_name(),
+        'rpm.metadata.version': self.get_version(),
+        'rpm.metadata.release': self.get_release(),
+        'rpm.metadata.arch': self.get_arch()
+      }
+    return self.json
+
+class RPMPackage(Package, ErrorPrintInterface):
   hdr = None
 
   def __init__(self, package):
+    super().__init__(package)
+    self.hdrFromPackage()
+
+  def set_path(self, package):
     if os.path.isfile(package):
       self.package = package
-      self.hdrFromPackage()
       self.__hash()
 
   def __hash(self):
@@ -60,33 +179,27 @@ class RPMPackage(ErrorPrintInterface):
         return self.hdr[attr].decode('utf-8')
       return None
 
-  def path(self):
-    return self.package
-
-  def size(self):
+  def get_size(self):
     if self.package:
       return os.stat(self.package).st_size
     return None
 
-  def filename(self):
+  def get_filename(self):
     if self.package:
       return os.path.basename(self.package)
     return None
 
-  def sha256sum(self):
-    return self.sha256
-
-  def name(self):
+  def get_name(self):
       return self.getPackageAttr(rpm.RPMTAG_NAME)
 
-  def version(self):
+  def get_version(self):
       return self.getPackageAttr(rpm.RPMTAG_VERSION)
 
-  def release(self):
+  def get_release(self):
       return self.getPackageAttr(rpm.RPMTAG_RELEASE)
 
-  def dist(self):
-      release = self.release()
+  def get_dist(self):
+      release = self.get_release()
       if release and '.' in release:
           # only CentOS (el) and Fedora (fc) supported
           relinfo = release.split('.')
@@ -96,24 +209,7 @@ class RPMPackage(ErrorPrintInterface):
             return disttag[0].split('_')[0]
       return None
 
-  def osname(self):
-      dist = self.dist()
-      if dist and dist[:2] == 'fc':
-          return 'fedora'
-      if dist and dist[:2] == 'el':
-          return 'centos'
-      return None
-
-  def osmajor(self):
-      dist = self.dist()
-      if self.osname():
-          try:
-              return int(dist[2:])
-          except ValueError:
-              pass
-      return None
-
-  def arch(self):
+  def get_arch(self):
       return self.getPackageAttr(rpm.RPMTAG_ARCH)
 
   def desc(self):
@@ -121,6 +217,152 @@ class RPMPackage(ErrorPrintInterface):
 
   def url(self):
       return self.getPackageAttr(rpm.RPMTAG_URL)
+
+class FTPRPMPackage(Package):
+  osid = None
+  relmaj = None
+  relmin = None
+  group = None
+
+  def __init__(self, package):
+    super().__init__(package)
+
+  def set_size(self, size):
+    try:
+      self._size = int(size)
+    except ValueError:
+      self._size = None
+
+  def set_package(self, package):
+    self.package = None
+    if isinstance(package, str) and package:
+      # rpmbuild/RPMS/gawk-4.0.2-4.el7_3.1.x86_64.rpm -> gawk-4.0.2-4.el7_3.1.x86_64.rpm
+      filename = package
+      if '/' in package:
+        filename = package.split('/')[-1]
+
+      # "awscli-1.14.28-5.el7_5.1.noarch" , "rpm"
+      # "ca-certificates-2018.2.22-70.0.el7_5.noarch", "rpm"
+      __p_arch, ext = filename.rsplit(".", 1)
+      if ext == 'rpm':
+        # "awscli-1.14.28-5.el7_5.1", "noarch"
+        # "ca-certificates-2018.2.22-70.0.el7_5", "noarch"
+        __p_release, arch = __p_arch.rsplit(".", 1)
+
+        if arch in ['noarch', 'i686', 'x86_64']:
+          self._arch = arch
+        else:
+          # wrong arch or wrong package name
+          return None
+
+        # "awscli", "1.14.28", "5.el7_5.1"
+        # "ca-certificates", "2018.2.22", "70.0.el7_5"
+        name, version, release = __p_release.rsplit("-", 2)
+
+        if 'el' in release:
+          osid = 'el'
+        elif 'fc' in release:
+          osid = 'fc'
+        else:
+          # wrong OS identifier
+          return None
+
+        dist = ".%s" % osid
+
+        # "5.el7_5.1" -> "5", "7_5.1"
+        # "70.0.el7_5" -> "70.0", "7_5"
+        relmaj, distver = release.split(dist)
+        relmin = None
+
+        if "." in distver:
+          distver, relmin = distver.split(".", 1)
+
+        dist = osid + distver
+
+        # awscli-1.14.28-5.el7_5.1.noarch.rpm
+        # ca-certificates-2018.2.22-70.0.el7_5.noarch.rpm
+        self.package = package
+        self._filename = filename
+        self._name = name       # ca-certificates # awscli
+        self._version = version # 2018.2.22       # 1.14.28
+        self._release = release # 70.0.el7_5      # 5.el7_5.1
+        self.osid = osid       # el              # el
+        self._dist = dist       # el7_5           # el7_5
+        self.relmaj = relmaj   # 70.0            # 5
+        self.relmin = relmin   # None            # 1
+
+  def set_dirlist_entry(self, entry):
+    # -rw-r--r--   1 centos-8 centos   12185279 Oct  4 16:21 php-7.3.9-1.fc31.src.rpm
+    if isinstance(entry, str) and entry:
+      data = entry.split()
+      # 7 - perms, links, user, group, size, date, filename
+      if entry[0] == '-' and len(data) >= 7:
+        package = data[-1]
+
+        # check if RPM package name
+        self.set_package(package)
+        if self.package:
+          _perms, _links, user, group, size = data[:5]
+          self.user = user
+          self.group = group
+          self.set_size(size)
+
+          mtime = ' '.join(data[5:-1])
+          d1 = d2 = None
+
+          try:
+            # Oct  4 16:21
+            d1 = datetime.strptime(mtime, '%b %d %H:%M').replace(year=datetime.now().year)
+          except ValueError:
+            pass
+
+          try:
+            # Oct  7  2018
+            d2 = datetime.strptime(mtime, '%b %d %Y')
+          except ValueError:
+            pass
+
+          d = d1 or d2
+          if d:
+            self.created = d.isoformat()
+
+  def set_path(self, package):
+    if ' ' in package:
+      self.set_dirlist_entry(package)
+    else:
+      self.set_package(package)
+
+  def get_size(self):
+    if self.package:
+      return self._size
+    return None
+
+  def get_filename(self):
+    if self.package:
+      return self._filename
+    return None
+
+  def get_name(self):
+    if self.package:
+      return self._name
+
+  def get_version(self):
+    if self.package:
+      return self._version
+
+  def get_release(self):
+    if self.package:
+      return self._release
+
+  def get_dist(self):
+    if self.package:
+      # in case of el6_8, el6_3 etc
+      return  self._dist.split('_')[0]
+    return None
+
+  def get_arch(self):
+    if self.package:
+      return self._arch
 
 class ArtifactoryError(Exception):
     """Artifactory exception"""
@@ -173,7 +415,7 @@ class ArtifactoryBasicAuthHandler(urllib.request.HTTPBasicAuthHandler):
     return req
 
   def http_error_403(self, req, fp, code, msg, headers):
-    if req.method == 'DELETE':
+    if req.get_method() == 'DELETE':
       url = req.full_url
       return self.retry_http_basic_auth(url, req, None)
 
@@ -225,11 +467,18 @@ class Artifactory(ErrorPrintInterface):
 
     while attempts:
       try:
-        return self.curl.open(req)
+        resp = self.curl.open(req)
+        if debugmode:
+          self.error_print("URL: %s" % req.full_url)
+          self.error_print("Method: %s" % req.get_method())
+          self.error_print("Request Headers: %s" % req.header_items())
+          self.error_print("Response Status: %s" % resp.status)
+          self.error_print("Response Headers: %s" % resp.headers)
+        return resp
       except urllib.error.HTTPError as e:
         if debugmode:
           self.error_print("URL: %s" % req.full_url)
-          self.error_print("Method: %s" % req.method)
+          self.error_print("Method: %s" % req.get_method())
           self.error_print("Request Headers: %s" % req.header_items())
           self.error_print("Error Message: %s" % str(e))
           self.error_print("Error Headers: %s" % e.hdrs)
@@ -259,7 +508,11 @@ class Artifactory(ErrorPrintInterface):
 
   def set_package(self, package):
     rpmpackage = RPMPackage(package)
-    if rpmpackage.name():
+
+    if not rpmpackage.name():
+      rpmpackage = FTPRPMPackage(package)
+
+    if rpmpackage.name() and rpmpackage.version() and rpmpackage.release():
       self.package = rpmpackage
       self.update_stats()
 
@@ -279,7 +532,10 @@ class Artifactory(ErrorPrintInterface):
 
       resp = self.send(req, headers = headers)
       if resp.code == 200:
-        return json.load(resp)["results"]
+        data = json.load(resp)
+        if debugmode:
+          self.error_print("Response Data: %s" % data)
+        return data["results"]
     return None
 
   def update_package_info(self, info):
@@ -341,7 +597,10 @@ class Artifactory(ErrorPrintInterface):
 
       resp = self.send(req)
       if resp.code == 200:
-        repo_match = list(filter(lambda x: x["key"] == repo, json.load(resp)))
+        data = json.load(resp)
+        if debugmode:
+          self.error_print("Response Data: %s" % data)
+        repo_match = list(filter(lambda x: x["key"] == repo, data))
         return len(repo_match) > 0
     return False
 
@@ -369,16 +628,23 @@ class Artifactory(ErrorPrintInterface):
       return False
     return None
 
-  def cleanup_packages(self, keep_version = True, keep = 2):
+  def cleanup_packages(self, keep_version = True, keep = 2, repo_path = None):
     if not self.remote:
       return None
 
-    # filter by distribution
     dist = '.' + self.package.dist()
+    if repo_path is None:
+      repo_path = "%(osname)s/%(osmajor)s" % {
+        'osname': self.package.osname(),
+        'osmajor': self.package.osmajor()
+      }
+
+    # filter by distribution
     distfiles = filter(
         lambda p:
           p["properties"]["rpm.metadata.arch"] == self.package.arch() and \
-          dist in p["properties"]["rpm.metadata.release"],
+          dist in p["properties"]["rpm.metadata.release"] and \
+          repo_path in p["path"],
         self.files)
 
     # filter by version
@@ -404,10 +670,10 @@ class Artifactory(ErrorPrintInterface):
       return self.delete_content(package_info["path"])
     return None
 
-  def upload_content(self, path = None):
+  def upload_content(self, repo_path = None):
     if self.repo and self.package:
-      if path is None:
-        path = "%(osname)s/%(osmajor)s" % {
+      if repo_path is None:
+        repo_path = "%(osname)s/%(osmajor)s" % {
           'osname': self.package.osname(),
           'osmajor': self.package.osmajor()
         }
@@ -415,7 +681,7 @@ class Artifactory(ErrorPrintInterface):
       req = "%(url)s/%(repo)s/%(path)s/%(filename)s" % {
         "url": self.url,
         "repo": self.repo,
-        "path": path,
+        "path": repo_path,
         "filename": self.package.filename()
       }
 
@@ -445,7 +711,7 @@ class Application(ErrorPrintInterface):
   secret = None
   repo = None
   url = None
-  path = None
+  repo_path = None
 
   packages = None
 
@@ -486,7 +752,7 @@ class Application(ErrorPrintInterface):
                            "variable BINTRAY_REPO is used")
 
     self.__ap.add_argument("-p", "--repo-path",
-                      dest="path",
+                      dest="repo_path",
                       help="Repository path (excluding package name) "
                            "[default: <os name>/<os major>]")
 
@@ -499,15 +765,18 @@ class Application(ErrorPrintInterface):
     self.__ap.add_argument("-c", "--cleanup",
                       action="store_true",
                       dest="cleanup",
-                      default=False,
                       help="Cleanup packages (keep only 2 packages of "
                            "specified version) [default: %(default)s]")
 
     self.__ap.add_argument("--newest-only",
                       action="store_true",
                       dest="newest_only",
-                      default=False,
                       help="Keep only newest packages during cleanup [default: %(default)s]")
+
+    self.__ap.add_argument("--no-check",
+                      action="store_true",
+                      dest="skip_files_check",
+                      help="Do not check if file exists before processing [default: %(default)s]")
 
     self.__ap.add_argument("files",
                       metavar="FILE",
@@ -533,7 +802,7 @@ class Application(ErrorPrintInterface):
       "ARTIFACTORY_REPO": "repo",
       "ARTIFACTORY_PASSWORD": "password",
       "ARTIFACTORY_URL": "url",
-      "REPO_PATH": "path"
+      "REPO_PATH": "repo_path"
     }
 
     for e in process_list:
@@ -544,13 +813,13 @@ class Application(ErrorPrintInterface):
   def process_input(self):
     pass
 
-  def get_packages_list(self, lookup_paths):
+  def get_packages_list(self, lookup_paths, skip_files_check = False):
     if self.packages is None:
       self.packages = []
 
     for path in lookup_paths:
       # look for only rpm files
-      if len(path) > 4 and path[-4:] == '.rpm' and os.path.isfile(path):
+      if len(path) > 4 and path[-4:] == '.rpm' and (os.path.isfile(path) or skip_files_check):
         packages = [path]
       elif os.path.isdir(path):
         packages = list(filter(lambda p: os.path.isfile(p), glob.glob(path + "/**/*.rpm", recursive=True)))
@@ -600,13 +869,13 @@ class Application(ErrorPrintInterface):
       self.repo = self.envs["repo"]
 
     # Repo path
-    if self.args.path:
-      self.path = self.args.path
-    elif "path" in self.envs:
-      self.path = self.envs["path"]
+    if self.args.repo_path:
+      self.repo_path = self.args.repo_path
+    elif "repo_path" in self.envs:
+      self.repo_path = self.envs["repo_path"]
 
     # Packages
-    self.get_packages_list(self.args.files)
+    self.get_packages_list(self.args.files, self.args.skip_files_check)
 
   def validate_hostname(self, hostname):
     if len(hostname) > 255:
@@ -690,19 +959,22 @@ class Application(ErrorPrintInterface):
         continue
 
       # Upload package
-      if not a.check_file_exist():
-        if a.upload_content(self.path):
-          print("Package %s uploaded into Bintray repo %s" % (a.package.filename(), a.repo))
+      if a.package.sha256sum():
+        if not a.check_file_exist():
+          if a.upload_content(self.repo_path):
+            print("Package %s uploaded into Bintray repo %s" % (a.package.filename(), a.repo))
+        else:
+            print("Package %s already exists in Bintray repo %s" % (a.package.filename(), a.repo))
       else:
-          print("Package %s already exists in Bintray repo %s" % (a.package.filename(), a.repo))
+        print("Package %s is not exists on local filesystem" % a.package.path())
 
       # Cleanup on upload
       if self.args.cleanup:
         if self.args.newest_only:
-          if a.cleanup_packages(keep_version = False, keep = 1):
+          if a.cleanup_packages(keep_version = False, keep = 1, repo_path = self.repo_path):
             print("Bintray repo %s has been cleaned up with only newest versions kept" % a.repo)
         else:
-          if a.cleanup_packages():
+          if a.cleanup_packages(repo_path = self.repo_path):
             print("Bintray repo %s has been cleaned up" % a.repo)
 
 def main():
