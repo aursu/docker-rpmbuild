@@ -290,10 +290,10 @@ class FTPRPMPackage(Package):
         self._name = name       # ca-certificates # awscli
         self._version = version # 2018.2.22       # 1.14.28
         self._release = release # 70.0.el7_5      # 5.el7_5.1
-        self.osid = osid       # el              # el
+        self.osid = osid        # el              # el
         self._dist = dist       # el7_5           # el7_5
-        self.relmaj = relmaj   # 70.0            # 5
-        self.relmin = relmin   # None            # 1
+        self.relmaj = relmaj    # 70.0            # 5
+        self.relmin = relmin    # None            # 1
 
   def set_dirlist_entry(self, entry):
     # -rw-r--r--   1 centos-8 centos   12185279 Oct  4 16:21 php-7.3.9-1.fc31.src.rpm
