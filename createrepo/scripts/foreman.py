@@ -118,29 +118,80 @@ class ForemanAPI(ErrorPrintInterface):
     if attempts == 0:
       raise ForemanError('Send attempts exceeded')
 
-class Foreman(ForemanAPI):
-  def users(self, search = None):
-    if isinstance(search, str) and search:
-      query = { "search": search }
-    else:
-      query = {}
-
-    req = "%(url)s/users?%(query)s" % {
-      "url": self.url,
-      "query": urllib.parse.urlencode(query)
-    }
-
+  def get_results(self, req):
     resp = self.send(req)
     if resp.code == 200:
       data = json.load(resp)
       if debugmode:
         self.error_print("Response Data: %s" % data)
       return data["results"]
-    return None
+    return None  
+
+class Foreman(ForemanAPI):
+  def users(self, login = None, mail = None,  lastname = None, firstname = None):
+    if isinstance(login, str) and login:
+      query = { "search": "login = %s" % login }
+    elif isinstance(mail, str) and mail:
+      query = { "search": "mail = %s" % mail }
+    elif isinstance(lastname, str) and lastname:
+      query = { "search": "lastname = %s" % lastname }
+      if isinstance(firstname, str) and firstname:
+        query = { "search": "lastname = %s and firstname = %s" % (lastname, firstname) }
+
+    req = "%(url)s/users?%(query)s" % {
+      "url": self.url,
+      "query": urllib.parse.urlencode(query)
+    }
+
+    return self.get_results(req)
 
 class Katello(ForemanAPI):
   def set_api_endpoint(self, scheme, netloc):
     self.url = "%s://%s/%s" % (scheme, netloc, "katello/api")
+
+  def organizations(self, name = None, id = None):
+    query = {}
+    if isinstance(id, int) and id >= 0:
+      query["search"] = "id=%d" % id
+    elif isinstance(name, str) and name:
+      query["search"] = "name = \"%(name)s\" or label = \"%(name)s\"" % { "name": name }
+
+    req = "%(url)s/organizations?%(query)s" % {
+      "url": self.url,
+      "query": urllib.parse.urlencode(query)
+    }
+
+    return self.get_results(req)
+
+  def products(self, organization_id, name = None):
+    query = { "organization_id": organization_id }
+    if isinstance(name, str) and name:
+      query["search"] = "name = \"%(name)s\" or label = \"%(name)s\"" % { "name": name }
+
+    req = "%(url)s/products?%(query)s" % {
+      "url": self.url,
+      "query": urllib.parse.urlencode(query)
+    }
+
+    return self.get_results(req)
+
+  def content_views(self, organization_id = None, name = None, composite = None):
+    query = {}
+    if isinstance(organization_id, int) and organization_id > 0:
+      query["organization_id"] = organization_id
+    if isinstance(name, str) and name:
+      query["search"] = "name = \"%(name)s\" or label = \"%(name)s\"" % { "name": name }
+    if (isinstance(composite, int) and composite  in [0, 1]) or \
+      isinstance(composite, bool):
+      query["composite"] = composite
+
+    req = "%(url)s/content_views?%(query)s" % {
+      "url": self.url,
+      "query": urllib.parse.urlencode(query)
+    }
+
+    return self.get_results(req)
+
 
 class Application(ErrorPrintInterface):
   # CLI options parser
@@ -305,8 +356,14 @@ class Application(ErrorPrintInterface):
   def run(self):
     self.setup()
 
-    f = Foreman(self.url, self.username, self.secret)
-    f.users()
+    k = Katello(self.url, self.username, self.secret)
+    k.content_views(composite=1)
+
+    # product -> repo (GET /katello/api/products/:product_id/repositories)
+    #                 (GET /katello/api/products - list products)
+    # content view -> repo (GET /katello/api/content_views/:id/repositories)
+    #                       (GET /katello/api/content_views)
+    # Upload content into the repository (POST /katello/api/repositories/:id/upload_content)
 
 def main():
   a = Application()
