@@ -13,28 +13,19 @@ services:
       args:
         centos: $OS7
     image: "aursu/rpmbuild:${OS7TAG}-base-root"
-  centos8base:
-    build:
-      context: 8/base
-      args:
-        centos: $OS8
-    image: "aursu/rpmbuild:${OS8TAG}-base"
-  centos8baseroot:
-    build:
-      context: 8/base
-      dockerfile: Dockerfile.root
-      args:
-        centos: $OS8
-    image: "aursu/rpmbuild:${OS8TAG}-base-root"
   stream8base:
     build:
       context: 8-stream/base
-    image: aursu/rpmbuild:stream8-base
+      args:
+        centos: stream8
+    image: "aursu/rpmbuild:stream8-base"
   stream8baseroot:
     build:
       context: 8-stream/base
       dockerfile: Dockerfile.root
-    image: aursu/rpmbuild:stream8-base-root
+      args:
+        centos: stream8
+    image: "aursu/rpmbuild:stream8-base-root"
   centos7rpmb:
     build:
       context: 7/build
@@ -70,29 +61,19 @@ services:
         centos: $OS7
         image: rpmb-root
     image: "aursu/rpmbuild:${OS7TAG}-build-root"
-  centos8build:
-    build:
-      context: 8/build
-      args:
-        centos: $OS8
-    image: "aursu/rpmbuild:${OS8TAG}-build"
-  centos8buildroot:
-    build:
-      context: 8/build
-      args:
-        centos: $OS8
-        image: base-root
-    image: "aursu/rpmbuild:${OS8TAG}-build-root"
   stream8build:
     build:
       context: 8-stream/build
-    image: aursu/rpmbuild:stream8-build
+      args:
+        centos: stream8
+    image: "aursu/rpmbuild:stream8-build"
   stream8buildroot:
     build:
       context: 8-stream/build
       args:
+        centos: stream8
         image: base-root
-    image: aursu/rpmbuild:stream8-build-root
+    image: "aursu/rpmbuild:stream8-build-root"
   centos7repo:
     restart: always
     volumes:
@@ -101,13 +82,6 @@ services:
       context: createrepo
       args:
         centos: $OS7
-    image: aursu/rpmbuild:createrepo
-    environment:
-      - DELAY_PERIOD=30
-  centos8repo:
-    restart: always
-    volumes:
-      - rpm8:/home/centos/rpmbuild/RPMS
     image: aursu/rpmbuild:createrepo
     environment:
       - DELAY_PERIOD=30
@@ -123,12 +97,11 @@ services:
       - buildnet
     volumes:
       - rpm7:/home/centos-7/rpmbuild/RPMS
-      - rpm8:/home/centos-8/rpmbuild/RPMS
       - rpm8stream:/home/stream-8/rpmbuild/RPMS
     build:
       context: webrepo
       args:
-        centos: $OS8
+        centos: stream8
     image: aursu/rpmbuild:webrepo
     ports:
       - "80:80"
@@ -136,8 +109,6 @@ services:
 volumes:
   rpm7:
     name: rpm7
-  rpm8:
-    name: rpm8
   rpm8stream:
     name: rpm8stream
 

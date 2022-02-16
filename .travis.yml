@@ -13,17 +13,15 @@ addons:
 env:
   global:
     - OS7=7.9.2009
-    - OS8=8.4.2105
     - TAGDEPLOY=1
     - OS7TAG=7.9.2009
-    - OS8TAG=8.4.2105
   jobs:
     - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=centos7base
     - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=centos7baseroot
-    - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=centos8base
-    - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=centos8baseroot
+    - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=stream8base
+    - BUILD_COMPOSE_FILE=docker-compose.yml           BUILD=stream8baseroot
     - BUILD_COMPOSE_FILE=docker-compose.systemd.yml   BUILD=centos7basesystemd
-    - BUILD_COMPOSE_FILE=docker-compose.systemd.yml   BUILD=centos8basesystemd
+    - BUILD_COMPOSE_FILE=docker-compose.systemd.yml   BUILD=stream8basesystemd
 
 script:
   - docker-compose -f ${BUILD_COMPOSE_FILE} build --no-cache --pull ${BUILD}
@@ -60,11 +58,11 @@ jobs:
     - stage: rpmb
       env:
         - BUILD_COMPOSE_FILE=docker-compose.yml
-        - BUILD=centos8build
+        - BUILD=stream8build
     - stage: rpmb
       env:
         - BUILD_COMPOSE_FILE=docker-compose.yml
-        - BUILD=centos8buildroot
+        - BUILD=stream8buildroot
     - stage: rpmb
       env:
         - BUILD_COMPOSE_FILE=docker-compose.yml
@@ -77,7 +75,7 @@ jobs:
     - stage: rpmb
       env:
         - BUILD_COMPOSE_FILE=docker-compose.systemd.yml
-        - BUILD=centos8buildsystemd
+        - BUILD=stream8buildsystemd
     - stage: rpmb
       env:
         - BUILD_COMPOSE_FILE=docker-compose.bintray.yml

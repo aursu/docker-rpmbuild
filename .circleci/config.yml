@@ -15,14 +15,6 @@ workflows:
           compose_file: docker-compose.yml
           build_service: centos7baseroot
       - docker-rpmbuild/image:
-          name: centos8base
-          compose_file: docker-compose.yml
-          build_service: centos8base
-      - docker-rpmbuild/image:
-          name: centos8baseroot
-          compose_file: docker-compose.yml
-          build_service: centos8baseroot
-      - docker-rpmbuild/image:
           name: stream8base
           compose_file: docker-compose.yml
           build_service: stream8base
@@ -34,10 +26,6 @@ workflows:
           name: centos7basesystemd
           compose_file: docker-compose.systemd.yml
           build_service: centos7basesystemd
-      - docker-rpmbuild/image:
-          name: centos8basesystemd
-          compose_file: docker-compose.systemd.yml
-          build_service: centos8basesystemd
       - docker-rpmbuild/image:
           name: stream8basesystemd
           compose_file: docker-compose.systemd.yml
@@ -83,18 +71,6 @@ workflows:
           requires:
             - centos7rpmbroot
       - docker-rpmbuild/image:
-          name: centos8build
-          compose_file: docker-compose.yml
-          build_service: centos8build
-          requires:
-            - centos8base
-      - docker-rpmbuild/image:
-          name: centos8buildroot
-          compose_file: docker-compose.yml
-          build_service: centos8buildroot
-          requires:
-            - centos8baseroot
-      - docker-rpmbuild/image:
           name: stream8build
           compose_file: docker-compose.yml
           build_service: stream8build
@@ -112,12 +88,6 @@ workflows:
           build_service: centos7buildsystemd
           requires:
             - centos7basesystemd
-      - docker-rpmbuild/image:
-          name: centos8buildsystemd
-          compose_file: docker-compose.systemd.yml
-          build_service: centos8buildsystemd
-          requires:
-            - centos8basesystemd
       - docker-rpmbuild/image:
           name: stream8buildsystemd
           compose_file: docker-compose.systemd.yml

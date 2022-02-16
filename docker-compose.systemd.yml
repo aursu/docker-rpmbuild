@@ -7,17 +7,12 @@ services:
       args:
         centos: $OS7
     image: "aursu/rpmbuild:${OS7TAG}-base-systemd"
-  centos8basesystemd:
-    build:
-      context: 8/base
-      dockerfile: Dockerfile.systemd
-      args:
-        centos: $OS8
-    image: "aursu/rpmbuild:${OS8TAG}-base-systemd"
   stream8basesystemd:
     build:
       context: 8-stream/base
       dockerfile: Dockerfile.systemd
+      args:
+        centos: stream8
     image: aursu/rpmbuild:stream8-base-systemd
   centos7buildsystemd:
     build:
@@ -26,17 +21,12 @@ services:
       args:
         centos: $OS7
     image: "aursu/rpmbuild:${OS7TAG}-build-systemd"
-  centos8buildsystemd:
-    build:
-      context: 8/build
-      dockerfile: Dockerfile.systemd
-      args:
-        centos: $OS8
-    image: "aursu/rpmbuild:${OS8TAG}-build-systemd"
   stream8buildsystemd:
     build:
       context: 8-stream/build
       dockerfile: Dockerfile.systemd
+      args:
+        centos: stream8
     image: aursu/rpmbuild:stream8-build-systemd
   centos7buildtest:
     networks:
@@ -50,18 +40,15 @@ services:
     tmpfs:
       - /run
     image: "aursu/rpmbuild:${OS7}-build-systemd"
-  centos8buildtest:
+  stream8buildtest:
     networks:
       - buildnet
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
-    cap_add:
-      - SYS_ADMIN
-    security_opt:
-      - seccomp=unconfined
+    privileged: true
+    cgroup_parent: docker.slice
     tmpfs:
       - /run
-    image: "aursu/rpmbuild:${OS8}-build-systemd"
+      - /tmp
+    image: aursu/rpmbuild:stream8-build-systemd
 
 networks:
   buildnet:

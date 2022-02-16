@@ -1,4 +1,4 @@
-ARG centos=8.4.2105
+ARG centos=stream8
 FROM aursu/centos:${centos}-httpd
 
 # enabe alias_module to use it for /centos location alias

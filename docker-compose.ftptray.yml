@@ -9,10 +9,6 @@ services:
       args:
         centos: $OS7
     image: aursu/rpmbuild:ftptray
-  centos8ftptray:
-    volumes:
-      - rpm8:/home/centos/rpmbuild/RPMS
-    image: aursu/rpmbuild:ftptray
   stream8ftptray:
     volumes:
       - rpm8stream:/home/centos/rpmbuild/RPMS
@@ -24,7 +20,6 @@ services:
   ftprepo:
     volumes:
       - rpm7:/home/centos-7/rpmbuild/RPMS
-      - rpm8:/home/centos-8/rpmbuild/RPMS
       - rpm8stream:/home/stream-8/rpmbuild/RPMS
       - rpm9stream:/home/stream-9/rpmbuild/RPMS
     build:
@@ -40,8 +35,6 @@ services:
 volumes:
   rpm7:
     name: rpm7
-  rpm8:
-    name: rpm8
   rpm8stream:
     name: rpm8stream
   rpm9stream:
