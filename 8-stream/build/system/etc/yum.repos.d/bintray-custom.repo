@@ -1,6 +1,6 @@
 [bintray-custom]
 name=bintray-custom
-baseurl=https://rpmb.jfrog.io/artifactory/custom/centos/$contentdir/
+baseurl=https://rpmb.jfrog.io/artifactory/custom/centos/8-stream/
 gpgcheck=0
 repo_gpgcheck=0
 enabled=0
