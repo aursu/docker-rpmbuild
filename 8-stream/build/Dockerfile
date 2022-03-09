@@ -9,6 +9,7 @@ RUN dnf -y install \
         dnf-utils \
         epel-rpm-macros \
         dnf-plugins-core \
+        procps-ng \
     && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 COPY system/etc/yum.repos.d/bintray-custom.repo /etc/yum.repos.d/bintray-custom.repo
