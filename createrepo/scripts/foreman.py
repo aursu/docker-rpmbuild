@@ -124,11 +124,73 @@ class ForemanAPI(ErrorPrintInterface):
       data = json.load(resp)
       if debugmode:
         self.error_print("Response Data: %s" % data)
-      return data["results"]
-    return None  
+      if "results" in data:
+        return data["results"]
+      return [data]
+    return None
 
-class Foreman(ForemanAPI):
-  def users(self, login = None, mail = None,  lastname = None, firstname = None):
+class Katello(ForemanAPI):
+  def set_api_endpoint(self, scheme, netloc):
+    self.url = "%s://%s/%s" % (scheme, netloc, "katello/api")
+
+class APIObject(ErrorPrintInterface):
+  api = None
+  url = None
+
+  iter_results = []
+  iter_idx = 0
+  iter_cnt = 0
+
+  def __init__(self, api, path, obj_info = {}):
+    self.use_api(api)
+    self.set_url(path)
+    self.init_object(obj_info)
+
+  def set_url(self, path):
+    if self.api:
+      self.url = "%(url)s/%(path)s" % { "url": self.api.url, "path": path }
+
+  def use_api(self, api):
+    if isinstance(api, ForemanAPI):
+      self.api = api
+    else:
+      raise TypeError("expected API object of type ForemanAPI, got %s" % api.__class__.__name__)
+
+  def init_object(self, obj_info = {}):
+    pass
+
+  def get_query(self, query):
+    req = "%(url)s?%(query)s" % {
+      "url": self.url,
+      "query": urllib.parse.urlencode(query)
+    }
+
+    return self.api.get_results(req)
+
+  def get(self):
+    raise NotImplementedError
+
+  def __iter__(self):
+    self.iter_results = self.get()
+    self.iter_idx = 0
+    self.iter_cnt = len(self.iter_results)
+    return self
+
+  def __next__(self):
+    if self.iter_idx < self.iter_cnt:
+      obj_info = self.iter_results[self.iter_idx]
+      self.iter_idx += 1
+      return obj_info
+    else:
+      raise StopIteration
+  
+
+class ForemanUser(APIObject):
+
+  def __init__(self, api):
+      super().__init__(api, 'users')
+
+  def get(self, login = None, mail = None,  lastname = None, firstname = None):
     if isinstance(login, str) and login:
       query = { "search": "login = %s" % login }
     elif isinstance(mail, str) and mail:
@@ -138,60 +200,95 @@ class Foreman(ForemanAPI):
       if isinstance(firstname, str) and firstname:
         query = { "search": "lastname = %s and firstname = %s" % (lastname, firstname) }
 
-    req = "%(url)s/users?%(query)s" % {
-      "url": self.url,
-      "query": urllib.parse.urlencode(query)
-    }
+    return self.get_query(query)
 
-    return self.get_results(req)
+class KatelloOrganization(APIObject):
 
-class Katello(ForemanAPI):
-  def set_api_endpoint(self, scheme, netloc):
-    self.url = "%s://%s/%s" % (scheme, netloc, "katello/api")
+  def __init__(self, api):
+      super().__init__(api, 'organizations')
 
-  def organizations(self, name = None, id = None):
-    query = {}
+  # https://www.theforeman.org/plugins/katello/3.18/api/apidoc/v2/organizations/index.html
+  def get(self, name = None, id = None):
+    query = { "full_result": 1 }
     if isinstance(id, int) and id >= 0:
       query["search"] = "id=%d" % id
     elif isinstance(name, str) and name:
       query["search"] = "name = \"%(name)s\" or label = \"%(name)s\"" % { "name": name }
 
-    req = "%(url)s/organizations?%(query)s" % {
-      "url": self.url,
-      "query": urllib.parse.urlencode(query)
-    }
+    return self.get_query(query)
 
-    return self.get_results(req)
+class KatelloProduct(APIObject):
 
-  def products(self, organization_id, name = None):
-    query = { "organization_id": organization_id }
+  def __init__(self, api):
+      super().__init__(api, 'products')
+
+  # https://www.theforeman.org/plugins/katello/3.18/api/apidoc/v2/products/index.html
+  def get(self, organization_id, name = None):
+    query = { "organization_id": organization_id, "full_result": 1 }
     if isinstance(name, str) and name:
       query["search"] = "name = \"%(name)s\" or label = \"%(name)s\"" % { "name": name }
 
-    req = "%(url)s/products?%(query)s" % {
-      "url": self.url,
-      "query": urllib.parse.urlencode(query)
-    }
+    return self.get_query(query)
 
-    return self.get_results(req)
+class KatelloContentView(APIObject):
 
-  def content_views(self, organization_id = None, name = None, composite = None):
-    query = {}
+  def __init__(self, api, obj_info = {}):
+    super().__init__(api, 'content_views', obj_info)
+
+  def init_object(self, obj_info = {}):
+    # if obj_info provided - initialize object with it
+    for name in ["name", "label", "latest_version", "next_version"]:
+      value = None
+      if name in obj_info and isinstance(obj_info[name], str) and obj_info[name]:
+        value = obj_info[name]
+      setattr(self, name, value)
+
+    for name in ["composite", "id", "organization_id", "version_count"]:
+      value = None
+      if name in obj_info:
+        if (isinstance(obj_info[name], int) and obj_info[name] > 0) or isinstance(obj_info[name], bool):
+          value = obj_info[name]
+      setattr(self, name, value)
+
+    for name in ["repository_ids", "environments", "repositories", "versions"]:
+      value = None
+      if name in obj_info and isinstance(obj_info[name], list) and obj_info[name]:
+        value = obj_info[name]
+      setattr(self, name, value)
+
+  def get_query(self, query):
+    if  isinstance(self.id, int) and self.id > 0:
+      req = "%(url)s/%(id)s" % {
+        "url": self.url,
+        "id": self.id
+      }
+      return self.api.get_results(req)
+    return super().get_query(query)
+
+  # https://www.theforeman.org/plugins/katello/3.18/api/apidoc/v2/content_views/index.html
+  def get(self, organization_id = None, name = None):
+    """List content views
+
+    Parameters
+    ----------
+    organization_id : int, optional
+        Organization identifier
+    name : str, optional
+        Name or label of the content view (default is None)
+
+    Returns
+    -------
+    list
+        a list of content views
+    """
+
+    query = { "full_result": 1 }
     if isinstance(organization_id, int) and organization_id > 0:
       query["organization_id"] = organization_id
-    if isinstance(name, str) and name:
-      query["search"] = "name = \"%(name)s\" or label = \"%(name)s\"" % { "name": name }
-    if (isinstance(composite, int) and composite  in [0, 1]) or \
-      isinstance(composite, bool):
-      query["composite"] = composite
+    if (isinstance(name, str) and name) or self.name:
+      query["search"] = "name = \"%(name)s\" or label = \"%(name)s\"" % { "name": name if name else self.name }
 
-    req = "%(url)s/content_views?%(query)s" % {
-      "url": self.url,
-      "query": urllib.parse.urlencode(query)
-    }
-
-    return self.get_results(req)
-
+    return self.get_query(query)
 
 class Application(ErrorPrintInterface):
   # CLI options parser
@@ -357,7 +454,9 @@ class Application(ErrorPrintInterface):
     self.setup()
 
     k = Katello(self.url, self.username, self.secret)
-    k.content_views(composite=1)
+
+    cv = KatelloContentView(k)
+    cv.get()
 
     # product -> repo (GET /katello/api/products/:product_id/repositories)
     #                 (GET /katello/api/products - list products)
