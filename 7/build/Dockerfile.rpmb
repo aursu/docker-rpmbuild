@@ -5,6 +5,7 @@ FROM aursu/rpmbuild:${centos}-${image}
 # install RPM build tools and assets
 RUN yum -y install \
         deltarpm \
+        jq \
         rpm-build \
         yum-utils \
         epel-rpm-macros \
