@@ -323,18 +323,28 @@ class Application(ErrorPrintInterface):
     secret.add_argument("-k", "--key",
                       metavar="KEY",
                       dest="apikey",
-                      help="Artifactory API key. If not set, environment "
+                      help="Foreman API key. If not set, environment "
                            "variable FOREMAN_API_KEY is used for authentication.")
 
     secret.add_argument("-w", "--password",
                       metavar="PASSWD",
                       dest="passwd",
-                      help="Artifactory password. If not set, environment "
+                      help="Foreman password. If not set, environment "
                            "variable FOREMAN_PASSWORD is used for authentication.")
 
     self.__ap.add_argument("-l", "--url",
-                      help="Artifactory URL. If not set, environment "
+                      help="Foreman URL. If not set, environment "
                            "variable FOREMAN_URL is used")
+
+    self.__ap.add_argument("--no-check",
+                      action="store_true",
+                      dest="skip_files_check",
+                      help="Do not check if file exists before processing [default: %(default)s]")
+
+    self.__ap.add_argument("files",
+                      metavar="FILE",
+                      nargs='+',
+                      help="Packages or directories to upload.")
 
   def process_config(self):
     pass
@@ -453,10 +463,10 @@ class Application(ErrorPrintInterface):
   def run(self):
     self.setup()
 
-    k = Katello(self.url, self.username, self.secret)
+    # k = Katello(self.url, self.username, self.secret)
 
-    cv = KatelloContentView(k)
-    cv.get()
+    # cv = KatelloContentView(k)
+    # cv.get()
 
     # product -> repo (GET /katello/api/products/:product_id/repositories)
     #                 (GET /katello/api/products - list products)
