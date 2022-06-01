@@ -227,8 +227,10 @@ class FTPRPMPackage(Package):
   relmaj = None
   relmin = None
   group = None
+  dirpath = None
 
-  def __init__(self, package):
+  def __init__(self, package, dirpath = None):
+    self.dirpath = dirpath
     super().__init__(package)
 
   def set_size(self, size):
@@ -295,13 +297,22 @@ class FTPRPMPackage(Package):
         self.relmaj = relmaj    # 70.0            # 5
         self.relmin = relmin    # None            # 1
 
-  def set_dirlist_entry(self, entry):
+  # directory listing does not contain path information
+  # `dirpath` parameter allow to use this information during directory listing
+  #           entry parse
+  def set_dirlist_entry(self, entry, dirpath = None):
     # -rw-r--r--   1 centos-8 centos   12185279 Oct  4 16:21 php-7.3.9-1.fc31.src.rpm
     if isinstance(entry, str) and entry:
       data = entry.split()
       # 7 - perms, links, user, group, size, date, filename
       if entry[0] == '-' and len(data) >= 7:
         package = data[-1]
+
+        if isinstance(dirpath, str) and dirpath:
+          package = "%(dir)s/%(filename)s" % {
+            'dir': dirpath,
+            'filename': package
+          }
 
         # check if RPM package name
         self.set_package(package)
@@ -332,7 +343,7 @@ class FTPRPMPackage(Package):
 
   def set_path(self, package):
     if ' ' in package:
-      self.set_dirlist_entry(package)
+      self.set_dirlist_entry(package, self.dirpath)
     else:
       self.set_package(package)
 
@@ -592,15 +603,16 @@ class Ftptray(ErrorPrintInterface):
     files = None
     if self.repo and self.package:
       name = self.package.name()
-      req = "ftp://%(hostname)s/rpmbuild/%(repo)s" % {
+      dirpath = "rpmbuild/%s" % self.repo
+      req = "ftp://%(hostname)s/%(dir)s" % {
         'hostname': self.url,
-        'repo': self.repo
+        'dir': dirpath
       }
       directory = self.dir(req)
 
       for entry in directory:
         if name in entry:
-          pinfo = FTPRPMPackage(entry).to_json()
+          pinfo = FTPRPMPackage(entry, dirpath).to_json()
           if pinfo and pinfo['package'] == name:
             pinfo['repo'] = self.repo_label
             if files is None:
