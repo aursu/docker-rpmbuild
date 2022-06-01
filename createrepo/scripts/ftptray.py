@@ -613,7 +613,11 @@ class Ftptray(ErrorPrintInterface):
     files = self.package_files()
     if files:
       # sort it
-      files.sort(key = lambda x: LooseVersion(x['path']))
+      try:
+        files.sort(key = lambda x: LooseVersion(x['path']))
+      except TypeError:
+        # no sort due to version tags mismatch
+        pass
       self.files = files
       self.remote = True
     else:
