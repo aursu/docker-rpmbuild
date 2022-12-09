@@ -813,6 +813,8 @@ class Application(ErrorPrintInterface):
   def process_input(self):
     pass
 
+  # create packages list based on lookup_paths provided (local system)
+  #
   def get_packages_list(self, lookup_paths, skip_files_check = False):
     if self.packages is None:
       self.packages = []

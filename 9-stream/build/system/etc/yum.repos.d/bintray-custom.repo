@@ -1,0 +1,9 @@
+[bintray-custom]
+name=bintray-custom
+baseurl=https://rpmb.jfrog.io/artifactory/custom/centos/9-stream/
+gpgcheck=0
+repo_gpgcheck=0
+enabled=0
+sslverify=0
+# https://dnf.readthedocs.io/en/latest/modularity.html#hotfix-repositories
+module_hotfixes=true

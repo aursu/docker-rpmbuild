@@ -1,13 +1,15 @@
-ARG centos=8.4.2105
-FROM aursu/rpmbuild:${centos}-base-systemd
+ARG centos=stream9-20221206.0
+ARG image=base
+FROM aursu/rpmbuild:${centos}-${image}
 
-ENV LANG=C
+ENV LANG=en_US.utf-8
 
 # install RPM build tools and assets
 RUN dnf -y install \
         rpm-build \
         dnf-utils \
         epel-rpm-macros \
+        dnf-plugins-core \
         procps-ng \
     && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
@@ -28,3 +30,6 @@ RUN dnf config-manager --set-enabled powertools \
     && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 VOLUME ${BUILD_TOPDIR}/SRPMS ${BUILD_TOPDIR}/RPMS
+
+USER $BUILD_USER
+WORKDIR ${BUILD_TOPDIR}/SPECS

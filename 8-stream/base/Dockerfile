@@ -1,4 +1,5 @@
-FROM aursu/centos:stream8-scm
+ARG image=scm
+FROM aursu/centos:stream8-${image}
 
 ARG builduser=centos
 ARG buildgroup=centos

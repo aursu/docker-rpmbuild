@@ -10,10 +10,16 @@ services:
   stream8basesystemd:
     build:
       context: 8-stream/base
-      dockerfile: Dockerfile.systemd
       args:
-        centos: stream8
+        image: systemd
     image: aursu/rpmbuild:stream8-base-systemd
+  stream9basesystemd:
+    build:
+      context: 9-stream/base
+      args:
+        centos: $OS9
+        image: systemd
+    image: "aursu/rpmbuild:${OS9TAG}-base-systemd"
   centos7buildsystemd:
     build:
       context: 7/build
@@ -24,10 +30,17 @@ services:
   stream8buildsystemd:
     build:
       context: 8-stream/build
-      dockerfile: Dockerfile.systemd
       args:
         centos: stream8
+        image: base-systemd
     image: aursu/rpmbuild:stream8-build-systemd
+  stream9buildsystemd:
+    build:
+      context: 9-stream/build
+      args:
+        centos: $OS9
+        image: base-systemd
+    image: "aursu/rpmbuild:${OS9TAG}-build-systemd"
   centos7buildtest:
     networks:
       - buildnet

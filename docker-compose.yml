@@ -26,6 +26,19 @@ services:
       args:
         centos: stream8
     image: "aursu/rpmbuild:stream8-base-root"
+  stream9base:
+    build:
+      context: 9-stream/base
+      args:
+        centos: $OS9
+    image: "aursu/rpmbuild:${OS9TAG}-base"
+  stream9baseroot:
+    build:
+      context: 9-stream/base
+      dockerfile: Dockerfile.root
+      args:
+        centos: $OS9
+    image: "aursu/rpmbuild:${OS9TAG}-base-root"
   centos7rpmb:
     build:
       context: 7/build
@@ -74,6 +87,19 @@ services:
         centos: stream8
         image: base-root
     image: "aursu/rpmbuild:stream8-build-root"
+  stream9build:
+    build:
+      context: 9-stream/build
+      args:
+        centos: $OS9
+    image: "aursu/rpmbuild:${OS9TAG}-build"
+  stream9buildroot:
+    build:
+      context: 9-stream/build
+      args:
+        centos: $OS9
+        image: base-root
+    image: "aursu/rpmbuild:${OS9TAG}-build-root"
   centos7repo:
     restart: always
     volumes:
@@ -92,12 +118,20 @@ services:
     image: aursu/rpmbuild:createrepo
     environment:
       - DELAY_PERIOD=30
+  stream9repo:
+    restart: always
+    volumes:
+      - rpm9stream:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:createrepo
+    environment:
+      - DELAY_PERIOD=30
   webrepo:
     networks:
       - buildnet
     volumes:
       - rpm7:/home/centos-7/rpmbuild/RPMS
       - rpm8stream:/home/stream-8/rpmbuild/RPMS
+      - rpm9stream:/home/stream-9/rpmbuild/RPMS
     build:
       context: webrepo
       args:
@@ -111,6 +145,8 @@ volumes:
     name: rpm7
   rpm8stream:
     name: rpm8stream
+  rpm9stream:
+    name: rpm9stream
 
 networks:
   buildnet:

@@ -1,4 +1,6 @@
-FROM aursu/centos:stream8-systemd
+ARG centos=stream9-20221206.0
+ARG image=scm
+FROM aursu/centos:${centos}-${image}
 
 ARG builduser=centos
 ARG buildgroup=centos
@@ -10,7 +12,7 @@ ENV BUILD_TOPDIR ${BUILD_HOME}/rpmbuild
 
 # apache:x:48:48:Apache:/usr/share/httpd:/sbin/nologin
 RUN groupadd -g 48 $buildgroup \
-    && useradd -u 48 -g $buildgroup -d $BUILD_HOME -k /dev/null -m $BUILD_USER
+    && useradd -u 48 -r -g $buildgroup -d $BUILD_HOME -k /dev/null -m $BUILD_USER
 
 # create rpmbuild structure for user root
 RUN mkdir -p ${BUILD_TOPDIR}/{RPMS,SOURCES,SPECS,SRPMS} \
