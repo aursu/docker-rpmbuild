@@ -4,20 +4,23 @@ FROM aursu/rpmbuild:${rocky}-${image}
 
 ENV LANG=en_US.utf-8
 
+RUN microdnf -y install \
+        epel-release \
+    && microdnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
+
 # install RPM build tools and assets
-RUN dnf -y install \
+RUN microdnf -y install \
         rpm-build \
         dnf-utils \
         epel-rpm-macros \
         dnf-plugins-core \
         procps-ng \
-    && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
+    && microdnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 COPY system/etc/yum.repos.d/bintray-custom.repo /etc/yum.repos.d/bintray-custom.repo
 
 # install common build tools (autotools, compilers, parsers etc)
-RUN dnf config-manager --set-enabled powertools \
-    && dnf config-manager --set-enabled epel-playground \
+RUN crb enable \
     && dnf -y install \
         autoconf \
         bison \
