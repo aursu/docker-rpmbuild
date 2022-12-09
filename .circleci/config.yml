@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  docker-rpmbuild: aursu/rpmbuild@1.1.9
+  docker-rpmbuild: aursu/rpmbuild@1.1.16
 
 workflows:
   dockerrpmbuild:
