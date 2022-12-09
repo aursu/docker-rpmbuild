@@ -13,6 +13,10 @@ services:
     volumes:
       - rpm8stream:/home/centos/rpmbuild/RPMS
     image: aursu/rpmbuild:ftptray
+  rocky8ftptray:
+    volumes:
+      - rpm8rocky:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:ftptray
   stream9ftptray:
     volumes:
       - rpm9stream:/home/centos/rpmbuild/RPMS
@@ -22,6 +26,7 @@ services:
       - rpm7:/home/centos-7/rpmbuild/RPMS
       - rpm8stream:/home/stream-8/rpmbuild/RPMS
       - rpm9stream:/home/stream-9/rpmbuild/RPMS
+      - rpm8rocky:/home/rocky-8/rpmbuild/RPMS
     build:
       context: ftprepo
     image: aursu/rpmbuild:ftprepo
@@ -39,3 +44,5 @@ volumes:
     name: rpm8stream
   rpm9stream:
     name: rpm9stream
+  rpm8rocky:
+    name: rpm8rocky

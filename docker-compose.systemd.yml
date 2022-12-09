@@ -7,12 +7,13 @@ services:
       args:
         centos: $OS7
     image: "aursu/rpmbuild:${OS7TAG}-base-systemd"
-  stream8basesystemd:
+  rocky8basesystemd:
     build:
-      context: 8-stream/base
+      context: 8-rocky/base
       args:
+        rocky: $RL8
         image: systemd
-    image: aursu/rpmbuild:stream8-base-systemd
+    image: "aursu/rpmbuild:${RL8TAG}-base-systemd"
   stream9basesystemd:
     build:
       context: 9-stream/base
@@ -27,13 +28,13 @@ services:
       args:
         centos: $OS7
     image: "aursu/rpmbuild:${OS7TAG}-build-systemd"
-  stream8buildsystemd:
+  rocky8buildsystemd:
     build:
-      context: 8-stream/build
+      context: 8-rocky/build
       args:
-        centos: stream8
+        rocky: $RL8
         image: base-systemd
-    image: aursu/rpmbuild:stream8-build-systemd
+    image: "aursu/rpmbuild:${RL8TAG}-build-systemd"
   stream9buildsystemd:
     build:
       context: 9-stream/build
@@ -53,7 +54,7 @@ services:
     tmpfs:
       - /run
     image: "aursu/rpmbuild:${OS7}-build-systemd"
-  stream8buildtest:
+  rocky8buildtest:
     networks:
       - buildnet
     privileged: true
@@ -61,7 +62,7 @@ services:
     tmpfs:
       - /run
       - /tmp
-    image: aursu/rpmbuild:stream8-build-systemd
+    image: "aursu/rpmbuild:${RL8TAG}-build-systemd"
 
 networks:
   buildnet:

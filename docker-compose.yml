@@ -13,19 +13,19 @@ services:
       args:
         centos: $OS7
     image: "aursu/rpmbuild:${OS7TAG}-base-root"
-  stream8base:
+  rocky8base:
     build:
-      context: 8-stream/base
+      context: 8-rocky/base
       args:
-        centos: stream8
-    image: "aursu/rpmbuild:stream8-base"
-  stream8baseroot:
+        rocky: $RL8
+    image: "aursu/rpmbuild:${RL8TAG}-base"
+  rocky8baseroot:
     build:
-      context: 8-stream/base
+      context: 8-rocky/base
       dockerfile: Dockerfile.root
       args:
-        centos: stream8
-    image: "aursu/rpmbuild:stream8-base-root"
+        rocky: $RL8
+    image: "aursu/rpmbuild:${RL8TAG}-base-root"
   stream9base:
     build:
       context: 9-stream/base
@@ -74,19 +74,19 @@ services:
         centos: $OS7
         image: rpmb-root
     image: "aursu/rpmbuild:${OS7TAG}-build-root"
-  stream8build:
+  rocky8build:
     build:
-      context: 8-stream/build
+      context: 8-rocky/build
       args:
-        centos: stream8
-    image: "aursu/rpmbuild:stream8-build"
-  stream8buildroot:
+        rocky: $RL8
+    image: "aursu/rpmbuild:${RL8TAG}-build"
+  rocky8buildroot:
     build:
-      context: 8-stream/build
+      context: 8-rocky/build
       args:
-        centos: stream8
+        rocky: $RL8
         image: base-root
-    image: "aursu/rpmbuild:stream8-build-root"
+    image: "aursu/rpmbuild:${RL8TAG}-build-root"
   stream9build:
     build:
       context: 9-stream/build
@@ -111,10 +111,10 @@ services:
     image: aursu/rpmbuild:createrepo
     environment:
       - DELAY_PERIOD=30
-  stream8repo:
+  rocky8repo:
     restart: always
     volumes:
-      - rpm8stream:/home/centos/rpmbuild/RPMS
+      - rpm8rocky:/home/centos/rpmbuild/RPMS
     image: aursu/rpmbuild:createrepo
     environment:
       - DELAY_PERIOD=30
@@ -130,12 +130,12 @@ services:
       - buildnet
     volumes:
       - rpm7:/home/centos-7/rpmbuild/RPMS
-      - rpm8stream:/home/stream-8/rpmbuild/RPMS
+      - rpm8rocky:/home/rocky-8/rpmbuild/RPMS
       - rpm9stream:/home/stream-9/rpmbuild/RPMS
     build:
       context: webrepo
       args:
-        centos: stream8
+        rocky: $RL8
     image: aursu/rpmbuild:webrepo
     ports:
       - "80:80"
@@ -143,8 +143,8 @@ services:
 volumes:
   rpm7:
     name: rpm7
-  rpm8stream:
-    name: rpm8stream
+  rpm8rocky:
+    name: rpm8rocky
   rpm9stream:
     name: rpm9stream
 

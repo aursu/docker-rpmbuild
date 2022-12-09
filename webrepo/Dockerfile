@@ -1,5 +1,5 @@
-ARG centos=stream8
-FROM aursu/centos:${centos}-httpd
+ARG rocky=8.7.20221112
+FROM aursu/rockylinux:${rocky}-httpd
 
 # enabe alias_module to use it for /centos location alias
 COPY system/etc/httpd/conf.modules.d/00-extra.conf \

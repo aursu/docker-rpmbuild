@@ -13,6 +13,10 @@ services:
     volumes:
       - rpm8stream:/home/centos/rpmbuild/RPMS
     image: aursu/rpmbuild:bintray
+  rocky8bintray:
+    volumes:
+      - rpm8rocky:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:bintray
   stream9bintray:
     volumes:
       - rpm9stream:/home/centos/rpmbuild/RPMS
@@ -24,3 +28,5 @@ volumes:
     name: rpm8stream
   rpm9stream:
     name: rpm9stream
+  rpm8rocky:
+    name: rpm8rocky
