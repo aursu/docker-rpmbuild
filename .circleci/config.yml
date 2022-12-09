@@ -15,13 +15,13 @@ workflows:
           compose_file: docker-compose.yml
           build_service: centos7baseroot
       - docker-rpmbuild/image:
-          name: stream8base
+          name: rocky8base
           compose_file: docker-compose.yml
-          build_service: stream8base
+          build_service: rocky8base
       - docker-rpmbuild/image:
-          name: stream8baseroot
+          name: rocky8baseroot
           compose_file: docker-compose.yml
-          build_service: stream8baseroot
+          build_service: rocky8baseroot
       - docker-rpmbuild/image:
           name: stream9base
           compose_file: docker-compose.yml
@@ -35,9 +35,9 @@ workflows:
           compose_file: docker-compose.systemd.yml
           build_service: centos7basesystemd
       - docker-rpmbuild/image:
-          name: stream8basesystemd
+          name: rocky8basesystemd
           compose_file: docker-compose.systemd.yml
-          build_service: stream8basesystemd
+          build_service: rocky8basesystemd
       - docker-rpmbuild/image:
           name: stream9basesystemd
           compose_file: docker-compose.systemd.yml
@@ -83,17 +83,17 @@ workflows:
           requires:
             - centos7rpmbroot
       - docker-rpmbuild/image:
-          name: stream8build
+          name: rocky8build
           compose_file: docker-compose.yml
-          build_service: stream8build
+          build_service: rocky8build
           requires:
-            - stream8base
+            - rocky8base
       - docker-rpmbuild/image:
-          name: stream8buildroot
+          name: rocky8buildroot
           compose_file: docker-compose.yml
-          build_service: stream8buildroot
+          build_service: rocky8buildroot
           requires:
-            - stream8baseroot
+            - rocky8baseroot
       - docker-rpmbuild/image:
           name: stream9build
           compose_file: docker-compose.yml
@@ -113,11 +113,11 @@ workflows:
           requires:
             - centos7basesystemd
       - docker-rpmbuild/image:
-          name: stream8buildsystemd
+          name: rocky8buildsystemd
           compose_file: docker-compose.systemd.yml
-          build_service: stream8buildsystemd
+          build_service: rocky8buildsystemd
           requires:
-            - stream8basesystemd
+            - rocky8basesystemd
       - docker-rpmbuild/image:
           name: stream9buildsystemd
           compose_file: docker-compose.systemd.yml
