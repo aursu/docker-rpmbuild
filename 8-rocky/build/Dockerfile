@@ -4,10 +4,6 @@ FROM aursu/rpmbuild:${rocky}-${image}
 
 ENV LANG=en_US.utf-8
 
-RUN microdnf -y install \
-        epel-release \
-    && microdnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
-
 # install RPM build tools and assets
 RUN microdnf -y install \
         rpm-build \
