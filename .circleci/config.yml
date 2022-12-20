@@ -135,6 +135,12 @@ workflows:
           compose_file: docker-compose.systemd.yml
           build_service: rocky8buildsystemd
           requires:
+            - rocky8rpmbsystemd
+      - docker-rpmbuild/image:
+          name: rocky8rpmbsystemd
+          compose_file: docker-compose.systemd.yml
+          build_service: rocky8rpmbsystemd
+          requires:
             - rocky8basesystemd
       - docker-rpmbuild/image:
           name: stream9buildsystemd

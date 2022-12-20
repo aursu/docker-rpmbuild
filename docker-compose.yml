@@ -107,7 +107,7 @@ services:
       context: 8-rocky/build
       args:
         rocky: $RL8
-        image: base-root
+        image: rpmb-root
     image: "aursu/rpmbuild:${RL8TAG}-build-root"
   stream9build:
     build:

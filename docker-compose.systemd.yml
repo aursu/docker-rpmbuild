@@ -14,6 +14,14 @@ services:
         rocky: $RL8
         image: systemd
     image: "aursu/rpmbuild:${RL8TAG}-base-systemd"
+  rocky8rpmbsystemd:
+    build:
+      context: 8-rocky/build
+      dockerfile: Dockerfile.rpmb
+      args:
+        centos: $RL8
+        image: base-systemd
+    image: "aursu/rpmbuild:${RL8TAG}-rpmb-systemd"
   stream9basesystemd:
     build:
       context: 9-stream/base
@@ -33,7 +41,7 @@ services:
       context: 8-rocky/build
       args:
         rocky: $RL8
-        image: base-systemd
+        image: rpmb-systemd
     image: "aursu/rpmbuild:${RL8TAG}-build-systemd"
   stream9buildsystemd:
     build:
