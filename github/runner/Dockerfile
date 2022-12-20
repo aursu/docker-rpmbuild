@@ -1,5 +1,5 @@
 ARG rocky=8.7.20221112
-FROM aursu/rockylinux:${rocky}-scm
+FROM aursu/rpmbuild:${rocky}-docker
 
 ARG version=2.299.1
 ARG shasum=147c14700c6cb997421b9a239c012197f11ea9854cd901ee88ead6fe73a72c74
