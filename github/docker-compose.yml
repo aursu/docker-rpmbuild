@@ -1,0 +1,45 @@
+version: "3"
+services:
+  githubrunnerbase:
+    build:
+      context: runner
+      args:
+        rocky: $RL8
+        version: $GITHUB_RUNNER_TAG
+        shasum: $GITHUB_RUNNER_SHA256
+    image: "aursu/rockylinux:${RL8}-github-runner-${GITHUB_RUNNER_TAG}"
+  githubrunnerconfig:
+    build:
+      context: runner
+      dockerfile: Dockerfile.config
+      args:
+        rocky: $RL8
+        version: $GITHUB_RUNNER_TAG
+    env_file:
+      - secrets/github.env
+    volumes:
+      - githubrunner:/home/runner
+  githubrunnerdelete:
+    build:
+      context: runner
+      dockerfile: Dockerfile.delete
+      args:
+        rocky: $RL8
+        version: $GITHUB_RUNNER_TAG
+    env_file:
+      - secrets/github.env
+    volumes:
+      - githubrunner:/home/runner
+  githubrunner:
+    build:
+      context: runner
+      dockerfile: Dockerfile.run
+      args:
+        rocky: $RL8
+        version: $GITHUB_RUNNER_TAG
+    volumes:
+      - githubrunner:/home/runner
+
+volumes:
+  githubrunner:
+    name: githubrunner
