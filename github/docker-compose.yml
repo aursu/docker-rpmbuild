@@ -37,8 +37,16 @@ services:
       args:
         rocky: $RL8
         version: $GITHUB_RUNNER_TAG
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+      DOCKER_CERT_PATH: /certs/client
+      DOCKER_TLS_VERIFY: 1
+      DOCKER_HOST: tcp://localhost:2376
     volumes:
       - githubrunner:/home/runner
+      - /etc/docker/certs.d:/etc/docker/certs.d
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/docker/tls:/certs/client
 
 volumes:
   githubrunner:
