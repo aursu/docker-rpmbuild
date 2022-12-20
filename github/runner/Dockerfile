@@ -16,11 +16,11 @@ ARG gid=1000
 ENV RUNNER_USER $user
 ENV RUNNER_HOME $home
 
-RUN microdnf -y install \
+RUN dnf -y install \
         libicu \
         lttng-ust \
         tar \
-    && microdnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
+    && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 RUN groupadd -g $gid $group \
   && useradd -d $RUNNER_HOME -u $uid -g $gid -m -s /bin/bash $RUNNER_USER
