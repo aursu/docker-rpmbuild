@@ -23,13 +23,13 @@ RUN microdnf -y install \
     && microdnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 RUN groupadd -g $gid $group \
-  && useradd -d $RUNNER_HOME -u $uid -g $gid -s /bin/bash $RUNNER_USER \
-  && mkdir -p $RUNNER_HOME/work
+  && useradd -d $RUNNER_HOME -u $uid -g $gid -m -s /bin/bash $RUNNER_USER
 
 USER $RUNNER_USER
 WORKDIR $RUNNER_HOME
 
 RUN set -ex \
+    && mkdir -p $RUNNER_HOME/work \
     && curl -O -L $RELEASE_URL \
     && echo "${shasum} ${DISTRO}" | sha256sum -c \
     && tar zxf $DISTRO \
