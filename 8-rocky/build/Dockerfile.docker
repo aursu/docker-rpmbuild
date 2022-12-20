@@ -1,6 +1,6 @@
-ARG centos=7.9.2009
+ARG rocky=8.7.20221112
 ARG image=rpmb
-FROM aursu/rpmbuild:${centos}-${image}
+FROM aursu/rpmbuild:${rocky}-${image}
 
 ARG DOCKER_VERSION="20.10.22"
 ARG COMPOSE_VERSION="2.14.1"
@@ -10,8 +10,8 @@ ARG RELEASE_URL="https://github.com/docker/compose/releases/download/v${COMPOSE_
 RUN yum-config-manager \
         --add-repo \
         https://download.docker.com/linux/centos/docker-ce.repo \
-    && yum -y install docker-ce-cli-${DOCKER_VERSION} \
-    && yum clean all && rm -rf /var/cache/yum /var/lib/rpm/__db*
+    && dnf -y install docker-ce-cli-${DOCKER_VERSION} \
+    && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 # install Docker Compose
 RUN curl -L ${RELEASE_URL} -o /usr/local/bin/docker-compose \

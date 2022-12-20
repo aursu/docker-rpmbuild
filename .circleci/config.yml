@@ -55,6 +55,18 @@ workflows:
           requires:
             - centos7baseroot
       - docker-rpmbuild/image:
+          name: rocky8rpmb
+          compose_file: docker-compose.yml
+          build_service: rocky8rpmb
+          requires:
+            - rocky8base
+      - docker-rpmbuild/image:
+          name: rocky8rpmbroot
+          compose_file: docker-compose.yml
+          build_service: rocky8rpmbroot
+          requires:
+            - rocky8baseroot
+      - docker-rpmbuild/image:
           name: webrepo
           compose_file: docker-compose.yml
           build_service: webrepo
@@ -87,13 +99,19 @@ workflows:
           compose_file: docker-compose.yml
           build_service: rocky8build
           requires:
-            - rocky8base
+            - rocky8rpmb
+      - docker-rpmbuild/image:
+          name: rocky8docker
+          compose_file: docker-compose.yml
+          build_service: rocky8docker
+          requires:
+            - rocky8rpmb
       - docker-rpmbuild/image:
           name: rocky8buildroot
           compose_file: docker-compose.yml
           build_service: rocky8buildroot
           requires:
-            - rocky8baseroot
+            - rocky8rpmbroot
       - docker-rpmbuild/image:
           name: stream9build
           compose_file: docker-compose.yml

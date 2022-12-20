@@ -1,19 +1,6 @@
 ARG rocky=8.7.20221112
-ARG image=base
+ARG image=rpmb
 FROM aursu/rpmbuild:${rocky}-${image}
-
-ENV LANG=en_US.utf-8
-
-# install RPM build tools and assets
-RUN microdnf -y install \
-        rpm-build \
-        dnf-utils \
-        epel-rpm-macros \
-        dnf-plugins-core \
-        procps-ng \
-    && microdnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
-
-COPY system/etc/yum.repos.d/bintray-custom.repo /etc/yum.repos.d/bintray-custom.repo
 
 # install common build tools (autotools, compilers, parsers etc)
 RUN crb enable \
