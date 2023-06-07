@@ -1,4 +1,4 @@
-ARG centos=stream9-20230216.0
+ARG centos=stream9-20230605.0
 ARG image=base
 FROM aursu/rpmbuild:${centos}-${image}
 

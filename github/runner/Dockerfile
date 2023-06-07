@@ -1,4 +1,4 @@
-ARG rocky=8.7.20230215
+ARG rocky=8.8.20230518
 FROM aursu/rpmbuild:${rocky}-docker
 
 ARG version=2.299.1
