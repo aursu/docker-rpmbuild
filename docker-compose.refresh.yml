@@ -1,4 +1,4 @@
-version: "3.5"
+version: "3"
 services:
   centos7refresh:
     volumes:
@@ -6,10 +6,6 @@ services:
     build:
       context: createrepo
       dockerfile: Dockerfile.refresh
-    image: aursu/rpmbuild:refresh
-  stream8refresh:
-    volumes:
-      - rpm8stream:/home/centos/rpmbuild/RPMS
     image: aursu/rpmbuild:refresh
   stream9refresh:
     volumes:
@@ -22,12 +18,6 @@ services:
   centos7cleanup:
     volumes:
       - rpm7:/home/centos/rpmbuild/RPMS
-    environment:
-      - REFRESH_ACTION=cleanup
-    image: aursu/rpmbuild:refresh
-  stream8cleanup:
-    volumes:
-      - rpm8stream:/home/centos/rpmbuild/RPMS
     environment:
       - REFRESH_ACTION=cleanup
     image: aursu/rpmbuild:refresh
@@ -47,8 +37,6 @@ services:
 volumes:
   rpm7:
     name: rpm7
-  rpm8stream:
-    name: rpm8stream
   rpm9stream:
     name: rpm9stream
   rpm8rocky:

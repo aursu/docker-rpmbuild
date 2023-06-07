@@ -1,4 +1,4 @@
-version: "3.5"
+version: "3"
 services:
   centos7ftptray:
     volumes:
@@ -8,10 +8,6 @@ services:
       dockerfile: Dockerfile.ftptray
       args:
         centos: $OS7
-    image: aursu/rpmbuild:ftptray
-  stream8ftptray:
-    volumes:
-      - rpm8stream:/home/centos/rpmbuild/RPMS
     image: aursu/rpmbuild:ftptray
   rocky8ftptray:
     volumes:
@@ -24,7 +20,6 @@ services:
   ftprepo:
     volumes:
       - rpm7:/home/centos-7/rpmbuild/RPMS
-      - rpm8stream:/home/stream-8/rpmbuild/RPMS
       - rpm9stream:/home/stream-9/rpmbuild/RPMS
       - rpm8rocky:/home/rocky-8/rpmbuild/RPMS
     build:
@@ -40,8 +35,6 @@ services:
 volumes:
   rpm7:
     name: rpm7
-  rpm8stream:
-    name: rpm8stream
   rpm9stream:
     name: rpm9stream
   rpm8rocky:

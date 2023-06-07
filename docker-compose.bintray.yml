@@ -9,10 +9,6 @@ services:
       args:
         centos: $OS7
     image: aursu/rpmbuild:bintray
-  stream8bintray:
-    volumes:
-      - rpm8stream:/home/centos/rpmbuild/RPMS
-    image: aursu/rpmbuild:bintray
   rocky8bintray:
     volumes:
       - rpm8rocky:/home/centos/rpmbuild/RPMS
@@ -24,8 +20,6 @@ services:
 volumes:
   rpm7:
     name: rpm7
-  rpm8stream:
-    name: rpm8stream
   rpm9stream:
     name: rpm9stream
   rpm8rocky:
