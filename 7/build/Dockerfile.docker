@@ -2,8 +2,8 @@ ARG centos=7.9.2009
 ARG image=rpmb
 FROM aursu/rpmbuild:${centos}-${image}
 
-ARG DOCKER_VERSION="20.10.22"
-ARG COMPOSE_VERSION="2.14.1"
+ARG DOCKER_VERSION="20.10.24"
+ARG COMPOSE_VERSION="2.20.3"
 ARG RELEASE_URL="https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-x86_64"
 
 # install Docker CLI
