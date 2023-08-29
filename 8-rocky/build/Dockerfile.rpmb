@@ -2,7 +2,11 @@ ARG rocky=8.8.20230518
 ARG image=base
 FROM aursu/rpmbuild:${rocky}-${image}
 
+ARG repopath=rpmb.jfrog.io/artifactory/custom
+
 ENV LANG=en_US.utf-8
+ENV DNF0 $repopath
+ENV DNF1 rocky
 
 # install RPM build tools and assets
 RUN microdnf -y install \

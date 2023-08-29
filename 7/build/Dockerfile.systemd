@@ -1,6 +1,10 @@
 ARG centos=7.9.2009
 FROM aursu/rpmbuild:${centos}-base-systemd
 
+ARG repopath=rpmb.jfrog.io/artifactory/custom
+ENV YUM0 $repopath
+ENV YUM1 centos
+
 # install RPM build tools and assets
 RUN yum -y install \
         deltarpm \

@@ -2,7 +2,11 @@ ARG centos=stream9-20230605.0
 ARG image=base
 FROM aursu/rpmbuild:${centos}-${image}
 
+ARG repopath=rpmb.jfrog.io/artifactory/custom
+
 ENV LANG=en_US.utf-8
+ENV DNF0 $repopath
+ENV DNF1 centos
 
 # install RPM build tools and assets
 RUN microdnf -y install \
