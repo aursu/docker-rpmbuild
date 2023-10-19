@@ -1,4 +1,4 @@
-ARG centos=stream9-20230605.0
+ARG centos=stream9-20231016.0
 FROM aursu/centos:${centos}-scm
 
 ARG builduser=root
