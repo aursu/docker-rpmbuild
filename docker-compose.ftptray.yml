@@ -1,9 +1,5 @@
 version: "3"
 services:
-  centos7ftptray:
-    volumes:
-      - rpm7:/home/centos/rpmbuild/RPMS
-    image: aursu/rpmbuild:ftptray
   rocky8ftptray:
     volumes:
       - rpm8rocky:/home/centos/rpmbuild/RPMS
@@ -23,7 +19,6 @@ services:
     image: aursu/rpmbuild:ftptray
   ftprepo:
     volumes:
-      - rpm7:/home/centos-7/rpmbuild/RPMS
       - rpm9stream:/home/stream-9/rpmbuild/RPMS
       - rpm8rocky:/home/rocky-8/rpmbuild/RPMS
       - rpm9rocky:/home/rocky-9/rpmbuild/RPMS
@@ -38,8 +33,6 @@ services:
       - PROFTPD_OPTIONS
 
 volumes:
-  rpm7:
-    name: rpm7
   rpm9stream:
     name: rpm9stream
   rpm8rocky:

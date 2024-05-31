@@ -1,12 +1,5 @@
 version: "3"
 services:
-  centos7basesystemd:
-    build:
-      context: 7/base
-      dockerfile: Dockerfile.systemd
-      args:
-        centos: $OS7
-    image: "aursu/rpmbuild:${OS7TAG}-base-systemd"
   rocky8basesystemd:
     build:
       context: 8-rocky/base
@@ -44,13 +37,6 @@ services:
         rocky: $RL9
         image: base-systemd
     image: "aursu/rpmbuild:${RL9TAG}-rpmb-systemd"
-  centos7buildsystemd:
-    build:
-      context: 7/build
-      dockerfile: Dockerfile.systemd
-      args:
-        centos: $OS7
-    image: "aursu/rpmbuild:${OS7TAG}-build-systemd"
   rocky8buildsystemd:
     build:
       context: 8-rocky/build
@@ -72,18 +58,6 @@ services:
         rocky: $RL9
         image: rpmb-systemd
     image: "aursu/rpmbuild:${RL9TAG}-build-systemd"
-  centos7buildtest:
-    networks:
-      - buildnet
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
-    cap_add:
-      - SYS_ADMIN
-    security_opt:
-      - seccomp=unconfined
-    tmpfs:
-      - /run
-    image: "aursu/rpmbuild:${OS7}-build-systemd"
   rocky8buildtest:
     networks:
       - buildnet

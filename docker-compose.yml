@@ -1,18 +1,5 @@
 version: "3"
 services:
-  centos7base:
-    build:
-      context: 7/base
-      args:
-        centos: $OS7
-    image: "aursu/rpmbuild:${OS7TAG}-base"
-  centos7baseroot:
-    build:
-      context: 7/base
-      dockerfile: Dockerfile.root
-      args:
-        centos: $OS7
-    image: "aursu/rpmbuild:${OS7TAG}-base-root"
   rocky8base:
     build:
       context: 8-rocky/base
@@ -52,41 +39,6 @@ services:
       args:
         rocky: $RL9
     image: "aursu/rpmbuild:${RL9TAG}-base-root"
-  centos7rpmb:
-    build:
-      context: 7/build
-      dockerfile: Dockerfile.rpmb
-      args:
-        centos: $OS7
-    image: "aursu/rpmbuild:${OS7TAG}-rpmb"
-  centos7docker:
-    build:
-      context: 7/build
-      dockerfile: Dockerfile.docker
-      args:
-        centos: $OS7
-    image: "aursu/rpmbuild:${OS7TAG}-docker"
-  centos7rpmbroot:
-    build:
-      context: 7/build
-      dockerfile: Dockerfile.rpmb
-      args:
-        centos: $OS7
-        image: base-root
-    image: "aursu/rpmbuild:${OS7TAG}-rpmb-root"
-  centos7build:
-    build:
-      context: 7/build
-      args:
-        centos: $OS7
-    image: "aursu/rpmbuild:${OS7TAG}-build"
-  centos7buildroot:
-    build:
-      context: 7/build
-      args:
-        centos: $OS7
-        image: rpmb-root
-    image: "aursu/rpmbuild:${OS7TAG}-build-root"
   rocky8rpmb:
     build:
       context: 8-rocky/build
@@ -170,13 +122,6 @@ services:
         rocky: $RL9
         image: rpmb-root
     image: "aursu/rpmbuild:${RL9TAG}-build-root"
-  centos7repo:
-    restart: always
-    volumes:
-      - rpm7:/home/centos/rpmbuild/RPMS
-    image: aursu/rpmbuild:createrepo
-    environment:
-      - DELAY_PERIOD=30
   rocky8repo:
     restart: always
     volumes:

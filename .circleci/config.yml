@@ -7,14 +7,6 @@ workflows:
   dockerrpmbuild:
     jobs:
       - docker-rpmbuild/image:
-          name: centos7base
-          compose_file: docker-compose.yml
-          build_service: centos7base
-      - docker-rpmbuild/image:
-          name: centos7baseroot
-          compose_file: docker-compose.yml
-          build_service: centos7baseroot
-      - docker-rpmbuild/image:
           name: rocky8base
           compose_file: docker-compose.yml
           build_service: rocky8base
@@ -39,10 +31,6 @@ workflows:
           compose_file: docker-compose.yml
           build_service: stream9baseroot
       - docker-rpmbuild/image:
-          name: centos7basesystemd
-          compose_file: docker-compose.systemd.yml
-          build_service: centos7basesystemd
-      - docker-rpmbuild/image:
           name: rocky8basesystemd
           compose_file: docker-compose.systemd.yml
           build_service: rocky8basesystemd
@@ -54,18 +42,6 @@ workflows:
           name: stream9basesystemd
           compose_file: docker-compose.systemd.yml
           build_service: stream9basesystemd
-      - docker-rpmbuild/image:
-          name: centos7rpmb
-          compose_file: docker-compose.yml
-          build_service: centos7rpmb
-          requires:
-            - centos7base
-      - docker-rpmbuild/image:
-          name: centos7rpmbroot
-          compose_file: docker-compose.yml
-          build_service: centos7rpmbroot
-          requires:
-            - centos7baseroot
       - docker-rpmbuild/image:
           name: rocky8rpmb
           compose_file: docker-compose.yml
@@ -100,24 +76,6 @@ workflows:
           compose_file: docker-compose.yml
           build_service: rocky8repo
           shorttag: false
-      - docker-rpmbuild/image:
-          name: centos7build
-          compose_file: docker-compose.yml
-          build_service: centos7build
-          requires:
-            - centos7rpmb
-      - docker-rpmbuild/image:
-          name: centos7docker
-          compose_file: docker-compose.yml
-          build_service: centos7docker
-          requires:
-            - centos7rpmb
-      - docker-rpmbuild/image:
-          name: centos7buildroot
-          compose_file: docker-compose.yml
-          build_service: centos7buildroot
-          requires:
-            - centos7rpmbroot
       - docker-rpmbuild/image:
           name: rocky8build
           compose_file: docker-compose.yml
@@ -166,12 +124,6 @@ workflows:
           build_service: stream9buildroot
           requires:
             - stream9baseroot
-      - docker-rpmbuild/image:
-          name: centos7buildsystemd
-          compose_file: docker-compose.systemd.yml
-          build_service: centos7buildsystemd
-          requires:
-            - centos7basesystemd
       - docker-rpmbuild/image:
           name: rocky8buildsystemd
           compose_file: docker-compose.systemd.yml

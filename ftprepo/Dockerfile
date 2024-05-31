@@ -12,13 +12,13 @@ RUN microdnf -y install \
 COPY system/etc/proftpd.conf /etc/proftpd.conf
 
 # create rpmbuild structure for user root
-RUN mkdir -p /home/centos-{6,7,8}/rpmbuild/RPMS \
+RUN mkdir -p /home/centos-7/rpmbuild/RPMS \
     && mkdir -p /home/stream-{8,9}/rpmbuild/RPMS \
     && mkdir -p /home/rocky-{8,9}/rpmbuild/RPMS \
-    && chown -R centos:centos /home/centos-{6,7,8} /home/stream-{8,9} /home/rocky-{8,9}
+    && chown -R centos:centos /home/centos-7 /home/stream-{8,9} /home/rocky-{8,9}
 
 RUN mkdir /etc/ftpd \
-    && for u in centos-6 centos-7 centos-8 stream-8 stream-9 rocky-8 rocky-9; do \
+    && for u in centos-7 stream-8 stream-9 rocky-8 rocky-9; do \
         echo -n "" | ftpasswd --passwd --file=/etc/ftpd/passwd \
         --name=$u \
         --uid=48 --gid=48 \

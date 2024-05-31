@@ -1,9 +1,5 @@
 version: "3"
 services:
-  centos7refresh:
-    volumes:
-      - rpm7:/home/centos/rpmbuild/RPMS
-    image: aursu/rpmbuild:refresh
   stream9refresh:
     volumes:
       - rpm9stream:/home/centos/rpmbuild/RPMS
@@ -18,12 +14,6 @@ services:
   rocky9refresh:
     volumes:
       - rpm9rocky:/home/centos/rpmbuild/RPMS
-    image: aursu/rpmbuild:refresh
-  centos7cleanup:
-    volumes:
-      - rpm7:/home/centos/rpmbuild/RPMS
-    environment:
-      - REFRESH_ACTION=cleanup
     image: aursu/rpmbuild:refresh
   rocky8cleanup:
     volumes:
@@ -45,8 +35,6 @@ services:
     image: aursu/rpmbuild:refresh
 
 volumes:
-  rpm7:
-    name: rpm7
   rpm9stream:
     name: rpm9stream
   rpm8rocky:

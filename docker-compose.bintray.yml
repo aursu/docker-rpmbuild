@@ -1,9 +1,5 @@
 version: "3.5"
 services:
-  centos7bintray:
-    volumes:
-      - rpm7:/home/centos/rpmbuild/RPMS
-    image: aursu/rpmbuild:bintray
   rocky8bintray:
     volumes:
       - rpm8rocky:/home/centos/rpmbuild/RPMS
@@ -22,8 +18,6 @@ services:
       - rpm9rocky:/home/centos/rpmbuild/RPMS
     image: aursu/rpmbuild:bintray
 volumes:
-  rpm7:
-    name: rpm7
   rpm9stream:
     name: rpm9stream
   rpm8rocky:

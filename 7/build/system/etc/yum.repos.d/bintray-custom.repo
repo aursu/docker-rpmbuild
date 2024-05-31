@@ -1,8 +1,0 @@
-[bintray-custom]
-name=bintray-custom
-# baseurl=https://rpmb.jfrog.io/artifactory/custom/centos/$releasever/
-baseurl=https://$YUM0/$YUM1/$releasever/
-gpgcheck=0
-repo_gpgcheck=0
-enabled=0
-sslverify=0
