@@ -151,7 +151,6 @@ services:
     networks:
       - buildnet
     volumes:
-      - rpm7:/home/centos-7/rpmbuild/RPMS
       - rpm8rocky:/home/rocky-8/rpmbuild/RPMS
       - rpm9rocky:/home/rocky-9/rpmbuild/RPMS
       - rpm9stream:/home/stream-9/rpmbuild/RPMS
@@ -164,8 +163,6 @@ services:
       - "80:80"
 
 volumes:
-  rpm7:
-    name: rpm7
   rpm8rocky:
     name: rpm8rocky
   rpm9rocky:
