@@ -1,12 +1,13 @@
-ARG centos=7.9.2009
-FROM aursu/rpmbuild:${centos}-base
+ARG rocky=8.9.20231119
+ARG image=base
+FROM aursu/rockylinux:${rocky}-${image}
 
 USER root
-RUN yum -y install \
+RUN microdnf -y install \
 		ftp \
-		python3 \
-		python3-rpm \
-	&& yum clean all && rm -rf /var/cache/yum /var/lib/rpm/__db*
+		python39 \
+		python39-rpm \
+	&& microdnf clean all && rm -rf /var/cache/yum /var/lib/rpm/__db*
 
 COPY scripts/ftptray.py /usr/local/bin/ftptray.py
 RUN chmod 755 /usr/local/bin/ftptray.py

@@ -19,7 +19,7 @@ services:
       context: 8-rocky/build
       dockerfile: Dockerfile.rpmb
       args:
-        centos: $RL8
+        rocky: $RL8
         image: base-systemd
     image: "aursu/rpmbuild:${RL8TAG}-rpmb-systemd"
   stream9basesystemd:
@@ -29,6 +29,21 @@ services:
         centos: $OS9
         image: systemd
     image: "aursu/rpmbuild:${OS9TAG}-base-systemd"
+  rocky9basesystemd:
+    build:
+      context: 9-rocky/base
+      args:
+        rocky: $RL9
+        image: systemd
+    image: "aursu/rpmbuild:${RL9TAG}-base-systemd"
+  rocky9rpmbsystemd:
+    build:
+      context: 9-rocky/build
+      dockerfile: Dockerfile.rpmb
+      args:
+        rocky: $RL9
+        image: base-systemd
+    image: "aursu/rpmbuild:${RL9TAG}-rpmb-systemd"
   centos7buildsystemd:
     build:
       context: 7/build
@@ -50,6 +65,13 @@ services:
         centos: $OS9
         image: base-systemd
     image: "aursu/rpmbuild:${OS9TAG}-build-systemd"
+  rocky9buildsystemd:
+    build:
+      context: 9-rocky/build
+      args:
+        rocky: $RL9
+        image: rpmb-systemd
+    image: "aursu/rpmbuild:${RL9TAG}-build-systemd"
   centos7buildtest:
     networks:
       - buildnet
@@ -71,6 +93,15 @@ services:
       - /run
       - /tmp
     image: "aursu/rpmbuild:${RL8TAG}-build-systemd"
+  rocky9buildtest:
+    networks:
+      - buildnet
+    privileged: true
+    cgroup_parent: docker.slice
+    tmpfs:
+      - /run
+      - /tmp
+    image: "aursu/rpmbuild:${RL9TAG}-build-systemd"
 
 networks:
   buildnet:

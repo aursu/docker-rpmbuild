@@ -1,9 +1,10 @@
-ARG centos=7.9.2009
-FROM aursu/rpmbuild:${centos}-base
+ARG rocky=8.9.20231119
+ARG image=base
+FROM aursu/rockylinux:${rocky}-${image}
 
-RUN yum -y install \
+RUN microdnf -y install \
 		createrepo \
-	&& yum clean all && rm -rf /var/cache/yum /var/lib/rpm/__db*
+	&& microdnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 # sleep for DELAY_PERIOD seconds
 ENV DELAY_PERIOD 60

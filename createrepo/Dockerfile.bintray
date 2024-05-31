@@ -1,10 +1,11 @@
-ARG centos=7.9.2009
-FROM aursu/rpmbuild:${centos}-base
+ARG rocky=8.9.20231119
+ARG image=base
+FROM aursu/rockylinux:${rocky}-${image}
 
-RUN yum -y install \
-		python3 \
-		python36-rpm \
-	&& yum clean all && rm -rf /var/cache/yum /var/lib/rpm/__db*
+RUN microdnf -y install \
+		python39 \
+		python39-rpm \
+	&& microdnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 COPY scripts/artifactory.py /usr/local/bin/artifactory.py
 RUN chmod 755 /usr/local/bin/artifactory.py

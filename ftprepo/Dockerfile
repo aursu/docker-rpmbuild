@@ -4,10 +4,10 @@ ENV LANG=C
 ENV PROFTPD_OPTIONS=
 
 USER root
-RUN yum -y install \
+RUN microdnf -y install \
 		proftpd \
         proftpd-utils \
-	&& yum clean all && rm -rf /var/cache/yum /var/lib/rpm/__db*
+	&& microdnf clean all && rm -rf /var/cache/yum /var/lib/rpm/__db*
 
 COPY system/etc/proftpd.conf /etc/proftpd.conf
 

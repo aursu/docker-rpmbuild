@@ -1,0 +1,21 @@
+ARG rocky=9.4.20240509
+ARG image=base
+FROM aursu/rpmbuild:${rocky}-${image}
+
+ARG repopath=rpmb.jfrog.io/artifactory/custom
+
+ENV LANG=en_US.utf-8
+ENV DNF0 $repopath
+ENV DNF1 rocky
+
+# install RPM build tools and assets
+RUN microdnf -y install \
+        dnf-plugins-core \
+        dnf-utils \
+        epel-rpm-macros \
+        jq \
+        procps-ng \
+        rpm-build \
+    && microdnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
+
+COPY system/etc/yum.repos.d/bintray-custom.repo /etc/yum.repos.d/bintray-custom.repo
