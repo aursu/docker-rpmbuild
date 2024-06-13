@@ -4,7 +4,7 @@ FROM aursu/rpmbuild:${rocky}-base
 USER root
 RUN microdnf -y install \
 		python39 \
-		python3-rpm \
+		python39-rpm \
 	&& microdnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 COPY scripts/artifactory.py /usr/local/bin/artifactory.py
