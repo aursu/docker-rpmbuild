@@ -76,6 +76,8 @@ workflows:
           compose_file: docker-compose.yml
           build_service: rocky8repo
           shorttag: false
+          requires:
+            - rocky8base
       - docker-rpmbuild/image:
           name: rocky8build
           compose_file: docker-compose.yml
