@@ -1,9 +1,9 @@
-ARG rocky=9.4.20240509
+ARG rocky=9.4.20240523
 ARG image=rpmb
 FROM aursu/rpmbuild:${rocky}-${image}
 
-ARG DOCKER_VERSION="26.1.3"
-ARG COMPOSE_VERSION="2.27.1"
+ARG DOCKER_VERSION="27.1.1"
+ARG COMPOSE_VERSION="2.29.1"
 ARG RELEASE_URL="https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-x86_64"
 
 # install Docker CLI
