@@ -419,8 +419,10 @@ class ArtifactoryBasicAuthHandler(urllib.request.HTTPBasicAuthHandler):
 
   def http_error_403(self, req, fp, code, msg, headers):
     if req.get_method() == 'DELETE':
-      url = req.full_url
-      return self.retry_http_basic_auth(url, req, None)
+      return self.retry_http_basic_auth(req.full_url, req, None)
+
+  def http_error_404(self, req, fp, code, msg, headers):
+    return self.http_error_403(req, fp, code, msg, headers)
 
 class Artifactory(ErrorPrintInterface):
   url = None
