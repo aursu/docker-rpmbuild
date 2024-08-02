@@ -176,7 +176,10 @@ class RPMPackage(Package, ErrorPrintInterface):
 
   def getPackageAttr(self, attr):
       if self.hdr:
-        return self.hdr[attr].decode('utf-8')
+        try:
+          return self.hdr[attr].decode('utf-8')
+        except AttributeError:
+          return self.hdr[attr]
       return None
 
   def get_size(self):
