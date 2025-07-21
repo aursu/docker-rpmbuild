@@ -95,7 +95,7 @@ workflows:
           compose_file: 9-rocky/docker-compose.yml
           build_service: rocky9buildroot
           requires:
-            - rocky8rpmbroot
+            - rocky9rpmbroot
       - docker-rpmbuild/image:
           name: rocky10buildroot
           compose_file: 10-rocky/docker-compose.yml
