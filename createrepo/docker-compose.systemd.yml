@@ -1,0 +1,82 @@
+version: "3"
+services:
+  rocky8basesystemd:
+    build:
+      context: 8-rocky/base
+      args:
+        rocky: $RL8
+        image: systemd
+    image: "aursu/rpmbuild:${RL8TAG}-base-systemd"
+  rocky8rpmbsystemd:
+    build:
+      context: 8-rocky/build
+      dockerfile: Dockerfile.rpmb
+      args:
+        rocky: $RL8
+        image: base-systemd
+    image: "aursu/rpmbuild:${RL8TAG}-rpmb-systemd"
+  stream9basesystemd:
+    build:
+      context: 9-stream/base
+      args:
+        centos: $OS9
+        image: systemd
+    image: "aursu/rpmbuild:${OS9TAG}-base-systemd"
+  rocky9basesystemd:
+    build:
+      context: 9-rocky/base
+      args:
+        rocky: $RL9
+        image: systemd
+    image: "aursu/rpmbuild:${RL9TAG}-base-systemd"
+  rocky9rpmbsystemd:
+    build:
+      context: 9-rocky/build
+      dockerfile: Dockerfile.rpmb
+      args:
+        rocky: $RL9
+        image: base-systemd
+    image: "aursu/rpmbuild:${RL9TAG}-rpmb-systemd"
+  rocky8buildsystemd:
+    build:
+      context: 8-rocky/build
+      args:
+        rocky: $RL8
+        image: rpmb-systemd
+    image: "aursu/rpmbuild:${RL8TAG}-build-systemd"
+  stream9buildsystemd:
+    build:
+      context: 9-stream/build
+      args:
+        centos: $OS9
+        image: base-systemd
+    image: "aursu/rpmbuild:${OS9TAG}-build-systemd"
+  rocky9buildsystemd:
+    build:
+      context: 9-rocky/build
+      args:
+        rocky: $RL9
+        image: rpmb-systemd
+    image: "aursu/rpmbuild:${RL9TAG}-build-systemd"
+  rocky8buildtest:
+    networks:
+      - buildnet
+    privileged: true
+    cgroup_parent: docker.slice
+    tmpfs:
+      - /run
+      - /tmp
+    image: "aursu/rpmbuild:${RL8TAG}-build-systemd"
+  rocky9buildtest:
+    networks:
+      - buildnet
+    privileged: true
+    cgroup_parent: docker.slice
+    tmpfs:
+      - /run
+      - /tmp
+    image: "aursu/rpmbuild:${RL9TAG}-build-systemd"
+
+networks:
+  buildnet:
+    name: buildnet
