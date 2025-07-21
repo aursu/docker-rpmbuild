@@ -2,7 +2,7 @@ ARG rocky=10.0.20250606
 FROM aursu/rpmbuild:${rocky}-base
 
 RUN microdnf -y install \
-		createrepo \
+		createrepo_c \
 	&& microdnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 # sleep for DELAY_PERIOD seconds
