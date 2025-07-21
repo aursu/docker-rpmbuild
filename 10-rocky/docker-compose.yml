@@ -1,0 +1,57 @@
+services:
+  rocky10base:
+    build:
+      context: base
+      args:
+        rocky: $RL10
+    image: "aursu/rpmbuild:${RL10TAG}-base"
+  rocky10baseroot:
+    build:
+      context: base
+      dockerfile: Dockerfile.root
+      args:
+        rocky: $RL10
+    image: "aursu/rpmbuild:${RL10TAG}-base-root"
+  rocky10rpmb:
+    build:
+      context: build
+      dockerfile: Dockerfile.rpmb
+      args:
+        rocky: $RL10
+    image: "aursu/rpmbuild:${RL10TAG}-rpmb"
+  rocky10docker:
+    build:
+      context: build
+      dockerfile: Dockerfile.docker
+      args:
+        rocky: $RL10
+    image: "aursu/rpmbuild:${RL10TAG}-docker"
+  rocky10rpmbroot:
+    build:
+      context: build
+      dockerfile: Dockerfile.rpmb
+      args:
+        rocky: $RL10
+        image: base-root
+    image: "aursu/rpmbuild:${RL10TAG}-rpmb-root"
+  rocky10build:
+    build:
+      context: build
+      args:
+        rocky: $RL10
+    image: "aursu/rpmbuild:${RL10TAG}-build"
+  rocky10buildroot:
+    build:
+      context: build
+      args:
+        rocky: $RL10
+        image: rpmb-root
+    image: "aursu/rpmbuild:${RL10TAG}-build-root"
+
+volumes:
+  rpm10rocky:
+    name: rpm10rocky
+
+networks:
+  buildnet:
+    name: buildnet

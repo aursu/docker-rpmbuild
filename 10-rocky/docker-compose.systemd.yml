@@ -1,0 +1,36 @@
+services:
+  rocky10basesystemd:
+    build:
+      context: base
+      args:
+        rocky: $RL10
+        image: systemd
+    image: "aursu/rpmbuild:${RL10TAG}-base-systemd"
+  rocky10rpmbsystemd:
+    build:
+      context: build
+      dockerfile: Dockerfile.rpmb
+      args:
+        rocky: $RL10
+        image: base-systemd
+    image: "aursu/rpmbuild:${RL10TAG}-rpmb-systemd"
+  rocky10buildsystemd:
+    build:
+      context: build
+      args:
+        rocky: $RL10
+        image: rpmb-systemd
+    image: "aursu/rpmbuild:${RL10TAG}-build-systemd"
+  rocky10buildtest:
+    networks:
+      - buildnet
+    privileged: true
+    cgroup_parent: docker.slice
+    tmpfs:
+      - /run
+      - /tmp
+    image: "aursu/rpmbuild:${RL10TAG}-build-systemd"
+
+networks:
+  buildnet:
+    name: buildnet
