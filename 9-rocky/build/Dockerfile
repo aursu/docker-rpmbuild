@@ -1,4 +1,4 @@
-ARG rocky=9.4.20240523
+ARG rocky=9.6.20250531
 ARG image=rpmb
 FROM aursu/rpmbuild:${rocky}-${image}
 

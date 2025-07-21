@@ -1,0 +1,38 @@
+services:
+  stream9base:
+    build:
+      context: base
+      args:
+        centos: $OS9
+    image: "aursu/rpmbuild:${OS9TAG}-base"
+  stream9baseroot:
+    build:
+      context: base
+      dockerfile: Dockerfile.root
+      args:
+        centos: $OS9
+    image: "aursu/rpmbuild:${OS9TAG}-base-root"
+  stream9build:
+    build:
+      context: build
+      args:
+        centos: $OS9
+    image: "aursu/rpmbuild:${OS9TAG}-build"
+  stream9buildroot:
+    build:
+      context: build
+      args:
+        centos: $OS9
+        image: base-root
+    image: "aursu/rpmbuild:${OS9TAG}-build-root"
+  stream9repo:
+    restart: always
+    volumes:
+      - rpm9stream:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:createrepo
+    environment:
+      - DELAY_PERIOD=30
+
+volumes:
+  rpm9stream:
+    name: rpm9stream

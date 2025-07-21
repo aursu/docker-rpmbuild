@@ -51,7 +51,3 @@ services:
 volumes:
   rpm10rocky:
     name: rpm10rocky
-
-networks:
-  buildnet:
-    name: buildnet

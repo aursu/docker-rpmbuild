@@ -1,174 +1,47 @@
 services:
-  rocky8base:
-    build:
-      context: 8-rocky/base
-      args:
-        rocky: $RL8
-    image: "aursu/rpmbuild:${RL8TAG}-base"
-  rocky8baseroot:
-    build:
-      context: 8-rocky/base
-      dockerfile: Dockerfile.root
-      args:
-        rocky: $RL8
-    image: "aursu/rpmbuild:${RL8TAG}-base-root"
-  stream9base:
-    build:
-      context: 9-stream/base
-      args:
-        centos: $OS9
-    image: "aursu/rpmbuild:${OS9TAG}-base"
-  stream9baseroot:
-    build:
-      context: 9-stream/base
-      dockerfile: Dockerfile.root
-      args:
-        centos: $OS9
-    image: "aursu/rpmbuild:${OS9TAG}-base-root"
-  rocky9base:
-    build:
-      context: 9-rocky/base
-      args:
-        rocky: $RL9
-    image: "aursu/rpmbuild:${RL9TAG}-base"
-  rocky9baseroot:
-    build:
-      context: 9-rocky/base
-      dockerfile: Dockerfile.root
-      args:
-        rocky: $RL9
-    image: "aursu/rpmbuild:${RL9TAG}-base-root"
-  rocky8rpmb:
-    build:
-      context: 8-rocky/build
-      dockerfile: Dockerfile.rpmb
-      args:
-        rocky: $RL8
-    image: "aursu/rpmbuild:${RL8TAG}-rpmb"
-  rocky8docker:
-    build:
-      context: 8-rocky/build
-      dockerfile: Dockerfile.docker
-      args:
-        rocky: $RL8
-    image: "aursu/rpmbuild:${RL8TAG}-docker"
-  rocky8rpmbroot:
-    build:
-      context: 8-rocky/build
-      dockerfile: Dockerfile.rpmb
-      args:
-        rocky: $RL8
-        image: base-root
-    image: "aursu/rpmbuild:${RL8TAG}-rpmb-root"
-  rocky8build:
-    build:
-      context: 8-rocky/build
-      args:
-        rocky: $RL8
-    image: "aursu/rpmbuild:${RL8TAG}-build"
-  rocky8buildroot:
-    build:
-      context: 8-rocky/build
-      args:
-        rocky: $RL8
-        image: rpmb-root
-    image: "aursu/rpmbuild:${RL8TAG}-build-root"
-  stream9build:
-    build:
-      context: 9-stream/build
-      args:
-        centos: $OS9
-    image: "aursu/rpmbuild:${OS9TAG}-build"
-  stream9buildroot:
-    build:
-      context: 9-stream/build
-      args:
-        centos: $OS9
-        image: base-root
-    image: "aursu/rpmbuild:${OS9TAG}-build-root"
-  rocky9rpmb:
-    build:
-      context: 9-rocky/build
-      dockerfile: Dockerfile.rpmb
-      args:
-        rocky: $RL9
-    image: "aursu/rpmbuild:${RL9TAG}-rpmb"
-  rocky9docker:
-    build:
-      context: 9-rocky/build
-      dockerfile: Dockerfile.docker
-      args:
-        rocky: $RL9
-    image: "aursu/rpmbuild:${RL9TAG}-docker"
-  rocky9rpmbroot:
-    build:
-      context: 9-rocky/build
-      dockerfile: Dockerfile.rpmb
-      args:
-        rocky: $RL9
-        image: base-root
-    image: "aursu/rpmbuild:${RL9TAG}-rpmb-root"
-  rocky9build:
-    build:
-      context: 9-rocky/build
-      args:
-        rocky: $RL9
-    image: "aursu/rpmbuild:${RL9TAG}-build"
-  rocky9buildroot:
-    build:
-      context: 9-rocky/build
-      args:
-        rocky: $RL9
-        image: rpmb-root
-    image: "aursu/rpmbuild:${RL9TAG}-build-root"
-  rocky8repo:
+  rocky10repo:
     restart: always
     volumes:
-      - rpm8rocky:/home/centos/rpmbuild/RPMS
+      - rpm10rocky:/home/centos/rpmbuild/RPMS
     build:
-      context: createrepo
+      context: .
       args:
-        rocky: $RL8
+        rocky: $RL10
     image: aursu/rpmbuild:createrepo
     environment:
       - DELAY_PERIOD=30
-  stream9repo:
-    restart: always
+  rocky10bintray:
     volumes:
-      - rpm9stream:/home/centos/rpmbuild/RPMS
-    image: aursu/rpmbuild:createrepo
-    environment:
-      - DELAY_PERIOD=30
-  rocky9repo:
-    restart: always
-    volumes:
-      - rpm9rocky:/home/centos/rpmbuild/RPMS
-    image: aursu/rpmbuild:createrepo
-    environment:
-      - DELAY_PERIOD=30
-  webrepo:
-    networks:
-      - buildnet
-    volumes:
-      - rpm8rocky:/home/rocky-8/rpmbuild/RPMS
-      - rpm9rocky:/home/rocky-9/rpmbuild/RPMS
-      - rpm9stream:/home/stream-9/rpmbuild/RPMS
+      - rpm10rocky:/home/centos/rpmbuild/RPMS
     build:
-      context: webrepo
+      context: .
+      dockerfile: Dockerfile.bintray
       args:
-        rocky: $RL8
-    image: aursu/rpmbuild:webrepo
-    ports:
-      - "80:80"
+        rocky: $RL10
+    image: aursu/rpmbuild:bintray
+  rocky10ftptray:
+    volumes:
+      - rpm10rocky:/home/centos/rpmbuild/RPMS
+    build:
+      context: .
+      dockerfile: Dockerfile.ftptray
+      args:
+        rocky: $RL10
+    image: aursu/rpmbuild:ftptray
+  rocky10refresh:
+    volumes:
+      - rpm10rocky:/home/centos/rpmbuild/RPMS
+    build:
+      context: .
+      dockerfile: Dockerfile.refresh
+    image: aursu/rpmbuild:refresh
+  rocky10cleanup:
+    volumes:
+      - rpm10rocky:/home/centos/rpmbuild/RPMS
+    environment:
+      - REFRESH_ACTION=cleanup
+    image: aursu/rpmbuild:refresh
 
 volumes:
-  rpm8rocky:
-    name: rpm8rocky
-  rpm9rocky:
-    name: rpm9rocky
-  rpm9stream:
-    name: rpm9stream
-
-networks:
-  buildnet:
-    name: buildnet
+  rpm10rocky:
+    name: rpm10rocky

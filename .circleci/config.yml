@@ -7,23 +7,47 @@ workflows:
   dockerrpmbuild:
     jobs:
       - docker-rpmbuild/image:
+          name: rocky9base
+          compose_file: 9-rocky/docker-compose.yml
+          build_service: rocky9base
+      - docker-rpmbuild/image:
           name: rocky10base
           compose_file: 10-rocky/docker-compose.yml
           build_service: rocky10base
+      - docker-rpmbuild/image:
+          name: rocky9baseroot
+          compose_file: 9-rocky/docker-compose.yml
+          build_service: rocky9baseroot
       - docker-rpmbuild/image:
           name: rocky10baseroot
           compose_file: 10-rocky/docker-compose.yml
           build_service: rocky10baseroot
       - docker-rpmbuild/image:
+          name: rocky9basesystemd
+          compose_file: 9-rocky/docker-compose.systemd.yml
+          build_service: rocky9basesystemd
+      - docker-rpmbuild/image:
           name: rocky10basesystemd
           compose_file: 10-rocky/docker-compose.systemd.yml
           build_service: rocky10basesystemd
+      - docker-rpmbuild/image:
+          name: rocky9rpmb
+          compose_file: 9-rocky/docker-compose.yml
+          build_service: rocky9rpmb
+          requires:
+            - rocky9base
       - docker-rpmbuild/image:
           name: rocky10rpmb
           compose_file: 10-rocky/docker-compose.yml
           build_service: rocky10rpmb
           requires:
             - rocky10base
+      - docker-rpmbuild/image:
+          name: rocky9rpmbroot
+          compose_file: 9-rocky/docker-compose.yml
+          build_service: rocky9rpmbroot
+          requires:
+            - rocky9baseroot
       - docker-rpmbuild/image:
           name: rocky10rpmbroot
           compose_file: 10-rocky/docker-compose.yml
@@ -32,16 +56,22 @@ workflows:
             - rocky10baseroot
       - docker-rpmbuild/image:
           name: webrepo
-          compose_file: docker-compose.yml
+          compose_file: webrepo/docker-compose.yml
           build_service: webrepo
           shorttag: false
       - docker-rpmbuild/image:
-          name: rocky8repo
-          compose_file: docker-compose.yml
-          build_service: rocky8repo
+          name: rocky10repo
+          compose_file: createrepo/docker-compose.yml
+          build_service: rocky10repo
           shorttag: false
           requires:
-            - rocky8base
+            - rocky10base
+      - docker-rpmbuild/image:
+          name: rocky9build
+          compose_file: 9-rocky/docker-compose.yml
+          build_service: rocky9build
+          requires:
+            - rocky9rpmb
       - docker-rpmbuild/image:
           name: rocky10build
           compose_file: 10-rocky/docker-compose.yml
@@ -49,11 +79,23 @@ workflows:
           requires:
             - rocky10rpmb
       - docker-rpmbuild/image:
+          name: rocky9docker
+          compose_file: 9-rocky/docker-compose.yml
+          build_service: rocky9docker
+          requires:
+            - rocky9rpmb
+      - docker-rpmbuild/image:
           name: rocky10docker
           compose_file: 10-rocky/docker-compose.yml
           build_service: rocky10docker
           requires:
             - rocky10rpmb
+      - docker-rpmbuild/image:
+          name: rocky9buildroot
+          compose_file: 9-rocky/docker-compose.yml
+          build_service: rocky9buildroot
+          requires:
+            - rocky8rpmbroot
       - docker-rpmbuild/image:
           name: rocky10buildroot
           compose_file: 10-rocky/docker-compose.yml
@@ -61,11 +103,23 @@ workflows:
           requires:
             - rocky10rpmbroot
       - docker-rpmbuild/image:
+          name: rocky9buildsystemd
+          compose_file: 9-rocky/docker-compose.systemd.yml
+          build_service: rocky9buildsystemd
+          requires:
+            - rocky9rpmbsystemd
+      - docker-rpmbuild/image:
           name: rocky10buildsystemd
           compose_file: 10-rocky/docker-compose.systemd.yml
           build_service: rocky10buildsystemd
           requires:
             - rocky10rpmbsystemd
+      - docker-rpmbuild/image:
+          name: rocky9rpmbsystemd
+          compose_file: 9-rocky/docker-compose.systemd.yml
+          build_service: rocky9rpmbsystemd
+          requires:
+            - rocky9basesystemd
       - docker-rpmbuild/image:
           name: rocky10rpmbsystemd
           compose_file: 10-rocky/docker-compose.systemd.yml
@@ -73,30 +127,30 @@ workflows:
           requires:
             - rocky10basesystemd
       - docker-rpmbuild/image:
-          name: rocky8bintray
-          compose_file: docker-compose.bintray.yml
-          build_service: rocky8bintray
+          name: rocky10bintray
+          compose_file: createrepo/docker-compose.yml
+          build_service: rocky10bintray
           shorttag: false
           requires:
-            - rocky8base
+            - rocky10base
       - docker-rpmbuild/image:
-          name: rocky8ftptray
-          compose_file: docker-compose.ftptray.yml
-          build_service: rocky8ftptray
+          name: rocky10ftptray
+          compose_file: createrepo/docker-compose.yml
+          build_service: rocky10ftptray
           shorttag: false
           requires:
-            - rocky8base
+            - rocky10base
       - docker-rpmbuild/image:
-          name: rocky8refresh
-          compose_file: docker-compose.refresh.yml
-          build_service: rocky8refresh
+          name: rocky10refresh
+          compose_file: createrepo/docker-compose.yml
+          build_service: rocky10refresh
           shorttag: false
           requires:
-            - rocky8repo
+            - rocky10repo
       - docker-rpmbuild/image:
           name: ftprepo
-          compose_file: docker-compose.ftptray.yml
+          compose_file: ftprepo/docker-compose.yml
           build_service: ftprepo
           shorttag: false
           requires:
-            - rocky8repo
+            - rocky10repo

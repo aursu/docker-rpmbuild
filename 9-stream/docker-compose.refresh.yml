@@ -1,0 +1,15 @@
+services:
+  stream9refresh:
+    volumes:
+      - rpm9stream:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:refresh
+  stream9cleanup:
+    volumes:
+      - rpm9stream:/home/centos/rpmbuild/RPMS
+    environment:
+      - REFRESH_ACTION=cleanup
+    image: aursu/rpmbuild:refresh
+
+volumes:
+  rpm9stream:
+    name: rpm9stream

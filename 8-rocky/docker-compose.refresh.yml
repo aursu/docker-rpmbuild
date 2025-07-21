@@ -1,15 +1,16 @@
+
 services:
-  rocky9refresh:
+  rocky8refresh:
     volumes:
-      - rpm9rocky:/home/centos/rpmbuild/RPMS
+      - rpm8rocky:/home/centos/rpmbuild/RPMS
     image: aursu/rpmbuild:refresh
-  rocky9cleanup:
+  rocky8cleanup:
     volumes:
-      - rpm9rocky:/home/centos/rpmbuild/RPMS
+      - rpm8rocky:/home/centos/rpmbuild/RPMS
     environment:
       - REFRESH_ACTION=cleanup
     image: aursu/rpmbuild:refresh
 
 volumes:
-  rpm9rocky:
-    name: rpm9rocky
+  rpm8rocky:
+    name: rpm8rocky

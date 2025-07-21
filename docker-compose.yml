@@ -1,0 +1,103 @@
+services:
+  stream9bintray:
+    volumes:
+      - rpm9stream:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:bintray
+  stream10bintray:
+    volumes:
+      - rpm10stream:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:bintray
+  rocky8bintray:
+    volumes:
+      - rpm8rocky:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:bintray
+  rocky9bintray:
+    volumes:
+      - rpm9rocky:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:bintray
+  rocky10bintray:
+    volumes:
+      - rpm10rocky:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:bintray
+  rocky8ftptray:
+    volumes:
+      - rpm8rocky:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:ftptray
+  stream9ftptray:
+    volumes:
+      - rpm9stream:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:ftptray
+  stream10ftptray:
+    volumes:
+      - rpm10stream:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:ftptray
+  rocky9ftptray:
+    volumes:
+      - rpm9rocky:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:ftptray
+  rocky10ftptray:
+    volumes:
+      - rpm10rocky:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:ftptray
+  stream9refresh:
+    volumes:
+      - rpm9stream:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:refresh
+  stream10refresh:
+    volumes:
+      - rpm10stream:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:refresh
+  rocky8refresh:
+    volumes:
+      - rpm8rocky:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:refresh
+  rocky9refresh:
+    volumes:
+      - rpm9rocky:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:refresh
+  rocky10refresh:
+    volumes:
+      - rpm10rocky:/home/centos/rpmbuild/RPMS
+    image: aursu/rpmbuild:refresh
+  rocky8cleanup:
+    volumes:
+      - rpm8rocky:/home/centos/rpmbuild/RPMS
+    environment:
+      - REFRESH_ACTION=cleanup
+    image: aursu/rpmbuild:refresh
+  stream9cleanup:
+    volumes:
+      - rpm9stream:/home/centos/rpmbuild/RPMS
+    environment:
+      - REFRESH_ACTION=cleanup
+    image: aursu/rpmbuild:refresh
+  stream10cleanup:
+    volumes:
+      - rpm10stream:/home/centos/rpmbuild/RPMS
+    environment:
+      - REFRESH_ACTION=cleanup
+    image: aursu/rpmbuild:refresh
+  rocky9cleanup:
+    volumes:
+      - rpm9rocky:/home/centos/rpmbuild/RPMS
+    environment:
+      - REFRESH_ACTION=cleanup
+    image: aursu/rpmbuild:refresh
+  rocky10cleanup:
+    volumes:
+      - rpm10rocky:/home/centos/rpmbuild/RPMS
+    environment:
+      - REFRESH_ACTION=cleanup
+    image: aursu/rpmbuild:refresh
+
+volumes:
+  rpm9stream:
+    name: rpm9stream
+  rpm10stream:
+    name: rpm10stream
+  rpm8rocky:
+    name: rpm8rocky
+  rpm9rocky:
+    name: rpm9rocky
+  rpm10rocky:
+    name: rpm10rocky

@@ -1,26 +1,9 @@
-version: "3.5"
 services:
-  rocky8bintray:
-    volumes:
-      - rpm8rocky:/home/centos/rpmbuild/RPMS
-    build:
-      context: createrepo
-      dockerfile: Dockerfile.bintray
-      args:
-        rocky: $RL8
-    image: aursu/rpmbuild:bintray
-  stream9bintray:
-    volumes:
-      - rpm9stream:/home/centos/rpmbuild/RPMS
-    image: aursu/rpmbuild:bintray
   rocky9bintray:
     volumes:
       - rpm9rocky:/home/centos/rpmbuild/RPMS
     image: aursu/rpmbuild:bintray
+
 volumes:
-  rpm9stream:
-    name: rpm9stream
-  rpm8rocky:
-    name: rpm8rocky
   rpm9rocky:
     name: rpm9rocky

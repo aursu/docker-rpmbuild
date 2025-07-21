@@ -1,0 +1,53 @@
+services:
+  rocky8base:
+    build:
+      context: base
+      args:
+        rocky: $RL8
+    image: "aursu/rpmbuild:${RL8TAG}-base"
+  rocky8baseroot:
+    build:
+      context: base
+      dockerfile: Dockerfile.root
+      args:
+        rocky: $RL8
+    image: "aursu/rpmbuild:${RL8TAG}-base-root"
+  rocky8rpmb:
+    build:
+      context: build
+      dockerfile: Dockerfile.rpmb
+      args:
+        rocky: $RL8
+    image: "aursu/rpmbuild:${RL8TAG}-rpmb"
+  rocky8docker:
+    build:
+      context: build
+      dockerfile: Dockerfile.docker
+      args:
+        rocky: $RL8
+    image: "aursu/rpmbuild:${RL8TAG}-docker"
+  rocky8rpmbroot:
+    build:
+      context: build
+      dockerfile: Dockerfile.rpmb
+      args:
+        rocky: $RL8
+        image: base-root
+    image: "aursu/rpmbuild:${RL8TAG}-rpmb-root"
+  rocky8build:
+    build:
+      context: build
+      args:
+        rocky: $RL8
+    image: "aursu/rpmbuild:${RL8TAG}-build"
+  rocky8buildroot:
+    build:
+      context: build
+      args:
+        rocky: $RL8
+        image: rpmb-root
+    image: "aursu/rpmbuild:${RL8TAG}-build-root"
+
+volumes:
+  rpm8rocky:
+    name: rpm8rocky

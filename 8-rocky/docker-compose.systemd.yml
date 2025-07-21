@@ -1,27 +1,27 @@
 services:
-  rocky9basesystemd:
+  rocky8basesystemd:
     build:
       context: base
       args:
-        rocky: $RL9
+        rocky: $RL8
         image: systemd
-    image: "aursu/rpmbuild:${RL9TAG}-base-systemd"
-  rocky9rpmbsystemd:
+    image: "aursu/rpmbuild:${RL8TAG}-base-systemd"
+  rocky8rpmbsystemd:
     build:
       context: build
       dockerfile: Dockerfile.rpmb
       args:
-        rocky: $RL9
+        rocky: $RL8
         image: base-systemd
-    image: "aursu/rpmbuild:${RL9TAG}-rpmb-systemd"
-  rocky9buildsystemd:
+    image: "aursu/rpmbuild:${RL8TAG}-rpmb-systemd"
+  rocky8buildsystemd:
     build:
       context: build
       args:
-        rocky: $RL9
+        rocky: $RL8
         image: rpmb-systemd
-    image: "aursu/rpmbuild:${RL9TAG}-build-systemd"
-  rocky9buildtest:
+    image: "aursu/rpmbuild:${RL8TAG}-build-systemd"
+  rocky8buildtest:
     networks:
       - buildnet
     privileged: true
@@ -29,7 +29,7 @@ services:
     tmpfs:
       - /run
       - /tmp
-    image: "aursu/rpmbuild:${RL9TAG}-build-systemd"
+    image: "aursu/rpmbuild:${RL8TAG}-build-systemd"
 
 networks:
   buildnet:

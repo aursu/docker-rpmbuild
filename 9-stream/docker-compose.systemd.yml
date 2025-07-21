@@ -1,0 +1,15 @@
+services:
+  stream9basesystemd:
+    build:
+      context: base
+      args:
+        centos: $OS9
+        image: systemd
+    image: "aursu/rpmbuild:${OS9TAG}-base-systemd"
+  stream9buildsystemd:
+    build:
+      context: build
+      args:
+        centos: $OS9
+        image: base-systemd
+    image: "aursu/rpmbuild:${OS9TAG}-build-systemd"
