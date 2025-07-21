@@ -1,9 +1,0 @@
-services:
-  rocky9ftptray:
-    volumes:
-      - rpm9rocky:/home/centos/rpmbuild/RPMS
-    image: aursu/rpmbuild:ftptray
-
-volumes:
-  rpm9rocky:
-    name: rpm9rocky

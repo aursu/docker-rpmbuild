@@ -10,6 +10,7 @@ ENV DNF1 rocky
 
 # install RPM build tools and assets
 RUN microdnf -y install \
+        dnf \
         dnf-plugins-core \
         dnf-utils \
         epel-rpm-macros \

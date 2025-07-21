@@ -1,9 +1,0 @@
-services:
-  stream9ftptray:
-    volumes:
-      - rpm9stream:/home/centos/rpmbuild/RPMS
-    image: aursu/rpmbuild:ftptray
-
-volumes:
-  rpm9stream:
-    name: rpm9stream
