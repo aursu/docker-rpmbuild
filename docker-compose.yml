@@ -93,11 +93,16 @@ services:
 volumes:
   rpm9stream:
     name: rpm9stream
+    external: true
   rpm10stream:
     name: rpm10stream
+    external: true
   rpm8rocky:
     name: rpm8rocky
+    external: true
   rpm9rocky:
     name: rpm9rocky
+    external: true
   rpm10rocky:
     name: rpm10rocky
+    external: true
