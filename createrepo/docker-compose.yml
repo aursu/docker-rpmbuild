@@ -10,23 +10,23 @@ services:
     image: aursu/rpmbuild:createrepo
     environment:
       - DELAY_PERIOD=30
-  rocky10bintray:
+  rocky8bintray:
     volumes:
-      - rpm10rocky:/home/centos/rpmbuild/RPMS
+      - rpm8rocky:/home/centos/rpmbuild/RPMS
     build:
       context: .
       dockerfile: Dockerfile.bintray
       args:
-        rocky: $RL10
+        rocky: $RL8
     image: aursu/rpmbuild:bintray
-  rocky10ftptray:
+  rocky8ftptray:
     volumes:
-      - rpm10rocky:/home/centos/rpmbuild/RPMS
+      - rpm8rocky:/home/centos/rpmbuild/RPMS
     build:
       context: .
       dockerfile: Dockerfile.ftptray
       args:
-        rocky: $RL10
+        rocky: $RL8
     image: aursu/rpmbuild:ftptray
   rocky10refresh:
     volumes:
@@ -45,3 +45,5 @@ services:
 volumes:
   rpm10rocky:
     name: rpm10rocky
+  rpm8rocky:
+    name: rpm8rocky

@@ -12,8 +12,7 @@ import http.client
 import base64
 import re
 import json
-# from distutils.version import LooseVersion
-from packaging.version import Version as LooseVersion
+from distutils.version import LooseVersion
 from datetime import datetime
 
 # global

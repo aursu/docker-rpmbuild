@@ -127,19 +127,19 @@ workflows:
           requires:
             - rocky10basesystemd
       - docker-rpmbuild/image:
-          name: rocky10bintray
+          name: rocky8bintray
           compose_file: createrepo/docker-compose.yml
-          build_service: rocky10bintray
+          build_service: rocky8bintray
           shorttag: false
           requires:
-            - rocky10base
+            - rocky8base
       - docker-rpmbuild/image:
-          name: rocky10ftptray
+          name: rocky8ftptray
           compose_file: createrepo/docker-compose.yml
-          build_service: rocky10ftptray
+          build_service: rocky8ftptray
           shorttag: false
           requires:
-            - rocky10base
+            - rocky8base
       - docker-rpmbuild/image:
           name: rocky10refresh
           compose_file: createrepo/docker-compose.yml
