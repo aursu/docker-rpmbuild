@@ -7,6 +7,10 @@ workflows:
   dockerrpmbuild:
     jobs:
       - docker-rpmbuild/image:
+          name: rocky8base
+          compose_file: 8-rocky/docker-compose.yml
+          build_service: rocky8base
+      - docker-rpmbuild/image:
           name: rocky9base
           compose_file: 9-rocky/docker-compose.yml
           build_service: rocky9base
