@@ -15,7 +15,7 @@ from urllib.request import Request
 import hashlib
 import rpm
 from datetime import datetime
-import distutils.version.LooseVersion as BaseLooseVersion
+from distutils.version import LooseVersion as BaseLooseVersion
 
 FTP_SIZE_OK      = 213
 FTP_SERVER_READY = 220

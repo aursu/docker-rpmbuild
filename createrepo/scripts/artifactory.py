@@ -12,7 +12,7 @@ import http.client
 import base64
 import re
 import json
-import distutils.version.LooseVersion as BaseLooseVersion
+from distutils.version import LooseVersion as BaseLooseVersion
 from datetime import datetime
 
 # global
