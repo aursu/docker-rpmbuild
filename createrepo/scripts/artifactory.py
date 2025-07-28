@@ -56,126 +56,126 @@ class LooseVersion(BaseLooseVersion):
         return (len(v1) > len(v2)) - (len(v1) < len(v2))
 
 class ErrorPrintInterface(object):
-  def __init__(self, *args,  **kwargs):
-    pass
+    def __init__(self, *args,  **kwargs):
+        pass
 
-  def error_print(self, msg):
-    print(msg, file=sys.stderr)
+    def error_print(self, msg):
+        print(msg, file=sys.stderr)
 
 class Package(object):
-  package = None
-  _name = None
-  _size = None
-  _filename = None
-  _version = None
-  _release = None
-  _dist = None
-  _arch = None
-  created = None
-  user = None
-  json = None
-  sha256 = None
+    package = None
+    _name = None
+    _size = None
+    _filename = None
+    _version = None
+    _release = None
+    _dist = None
+    _arch = None
+    created = None
+    user = None
+    json = None
+    sha256 = None
 
-  def __init__(self, package):
-    self.set_path(package)
+    def __init__(self, package):
+        self.set_path(package)
 
-  def set_path(self, package):
-    self.package = package
+    def set_path(self, package):
+        self.package = package
 
-  def get_path(self):
-    return self.package
+    def get_path(self):
+        return self.package
 
-  def path(self):
-    return self.get_path()
+    def path(self):
+        return self.get_path()
 
-  def get_name(self):
-    return self._name
+    def get_name(self):
+        return self._name
 
-  def name(self):
-    return self.get_name()
+    def name(self):
+        return self.get_name()
 
-  def get_size(self):
-    return self._size
+    def get_size(self):
+        return self._size
 
-  def size(self):
-    return self.get_size()
+    def size(self):
+        return self.get_size()
 
-  def get_filename(self):
-    return self._filename
+    def get_filename(self):
+        return self._filename
 
-  def filename(self):
-    return self.get_filename()
+    def filename(self):
+        return self.get_filename()
 
-  def get_version(self):
-    return self._version
+    def get_version(self):
+        return self._version
 
-  def version(self):
-    return self.get_version()
+    def version(self):
+        return self.get_version()
 
-  def get_release(self):
-    return self._release
+    def get_release(self):
+        return self._release
 
-  def release(self):
-    return self.get_release()
+    def release(self):
+        return self.get_release()
 
-  def get_dist(self):
-    return self._dist
+    def get_dist(self):
+        return self._dist
 
-  def dist(self):
-    return self.get_dist()
+    def dist(self):
+        return self.get_dist()
 
-  def osname(self):
-    dist = self.get_dist()
-    if dist and dist[:2] == 'fc':
-      return 'fedora'
-    if dist and dist[:2] == 'el':
-      return 'centos'
-    return None
+    def osname(self):
+        dist = self.get_dist()
+        if dist and dist[:2] == 'fc':
+            return 'fedora'
+        if dist and dist[:2] == 'el':
+            return 'centos'
+        return None
 
-  def osmajor(self):
-    dist = self.get_dist()
-    if self.osname():
-      try:
-        return int(dist[2:])
-      except ValueError:
-        pass
-    return None
+    def osmajor(self):
+        dist = self.get_dist()
+        if self.osname():
+            try:
+                return int(dist[2:])
+            except ValueError:
+                pass
+        return None
 
-  def get_arch(self):
-    return self._arch
+    def get_arch(self):
+        return self._arch
 
-  def arch(self):
-    return self.get_arch()
+    def arch(self):
+        return self.get_arch()
 
-  def sha256sum(self):
-    return self.sha256
+    def sha256sum(self):
+        return self.sha256
 
-  def to_json(self):
-    # {
-    #   u'name': u'httpd-2.4.41-1.el6.x86_64.rpm',
-    #   u'package': u'httpd',
-    #   u'created': u'2019-08-15T12:10:06.176Z',
-    #   u'version': u'2.4.41',
-    #   u'owner': u'aursu',
-    #   u'path': u'centos/6/httpd-2.4.41-1.el6.x86_64.rpm',
-    #   u'size': 983096
-    # },
-    self.json = None
-    if self.get_path():
-      self.json = { 'name': self.get_filename() }
-      self.json['path'] = self.get_path()
-      self.json['package'] = self.get_name()
-      if self.created: self.json['created'] = self.created
-      self.json['version'] = self.get_version()
-      if self.user: self.json['owner'] = self.user
-      if self.get_size(): self.json['size'] = self.get_size()
-      self.json['properties'] = {
-        'rpm.metadata.name': self.get_name(),
-        'rpm.metadata.version': self.get_version(),
-        'rpm.metadata.release': self.get_release(),
-        'rpm.metadata.arch': self.get_arch()
-      }
-    return self.json
+    def to_json(self):
+        # {
+        #   u'name': u'httpd-2.4.41-1.el6.x86_64.rpm',
+        #   u'package': u'httpd',
+        #   u'created': u'2019-08-15T12:10:06.176Z',
+        #   u'version': u'2.4.41',
+        #   u'owner': u'aursu',
+        #   u'path': u'centos/6/httpd-2.4.41-1.el6.x86_64.rpm',
+        #   u'size': 983096
+        # },
+        self.json = None
+        if self.get_path():
+            self.json = { 'name': self.get_filename() }
+            self.json['path'] = self.get_path()
+            self.json['package'] = self.get_name()
+            if self.created: self.json['created'] = self.created
+            self.json['version'] = self.get_version()
+            if self.user: self.json['owner'] = self.user
+            if self.get_size(): self.json['size'] = self.get_size()
+            self.json['properties'] = {
+                'rpm.metadata.name': self.get_name(),
+                'rpm.metadata.version': self.get_version(),
+                'rpm.metadata.release': self.get_release(),
+                'rpm.metadata.arch': self.get_arch()
+            }
+        return self.json
 
 class RPMPackage(Package, ErrorPrintInterface):
   hdr = None
