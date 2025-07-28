@@ -15,7 +15,7 @@ from urllib.request import Request
 import hashlib
 import rpm
 from datetime import datetime
-from distutils.version import LooseVersion
+import distutils.version.LooseVersion as BaseLooseVersion
 
 FTP_SIZE_OK      = 213
 FTP_SERVER_READY = 220
@@ -23,6 +23,41 @@ FTP_TRANS_OK     = 226
 FTP_AUTH_OK      = 230
 FTP_OK           = 250
 FTP_PWD_OK       = 257
+
+class LooseVersion(BaseLooseVersion):
+    """Loose version class for compatibility with Python 3.6+"""
+    def __init__(self, version):
+        basename = os.path.basename(version)
+        super().__init__(basename)
+
+    def _cmp(self, other):
+        """Compare two LooseVersion instances"""
+        if isinstance(other, str):
+            other = LooseVersion(other)
+        elif not isinstance(other, LooseVersion):
+            return NotImplemented
+
+        v1 = self.version
+        v2 = other.version
+
+        for a, b in zip(v1, v2):
+            if type(a) == type(b):
+                cmp = (a > b) - (a < b)
+            elif isinstance(a, int) and b == '-':
+                cmp = 1
+            elif a == '-' and isinstance(b, int):
+                cmp = -1
+            else:
+                try:
+                    cmp = (a > b) - (a < b)
+                except TypeError:
+                    raise TypeError(f"Cannot compare {a!r} and {b!r}")
+
+            if cmp != 0:
+                return cmp
+
+        # если все элементы равны — сравниваем длину
+        return (len(v1) > len(v2)) - (len(v1) < len(v2))
 
 class ErrorPrintInterface(object):
   def __init__(self, *args,  **kwargs):

@@ -12,13 +12,48 @@ import http.client
 import base64
 import re
 import json
-from distutils.version import LooseVersion
+import distutils.version.LooseVersion as BaseLooseVersion
 from datetime import datetime
 
 # global
 debugmode = False
 if 'BINTRAY_DEBUG' in os.environ:
     debugmode = True
+
+class LooseVersion(BaseLooseVersion):
+    """Loose version class for compatibility with Python 3.6+"""
+    def __init__(self, version):
+        basename = os.path.basename(version)
+        super().__init__(basename)
+
+    def _cmp(self, other):
+        """Compare two LooseVersion instances"""
+        if isinstance(other, str):
+            other = LooseVersion(other)
+        elif not isinstance(other, LooseVersion):
+            return NotImplemented
+
+        v1 = self.version
+        v2 = other.version
+
+        for a, b in zip(v1, v2):
+            if type(a) == type(b):
+                cmp = (a > b) - (a < b)
+            elif isinstance(a, int) and b == '-':
+                cmp = 1
+            elif a == '-' and isinstance(b, int):
+                cmp = -1
+            else:
+                try:
+                    cmp = (a > b) - (a < b)
+                except TypeError:
+                    raise TypeError(f"Cannot compare {a!r} and {b!r}")
+
+            if cmp != 0:
+                return cmp
+
+        # если все элементы равны — сравниваем длину
+        return (len(v1) > len(v2)) - (len(v1) < len(v2))
 
 class ErrorPrintInterface(object):
   def __init__(self, *args,  **kwargs):
