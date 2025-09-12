@@ -16,7 +16,7 @@ ARG gid=1000
 ENV RUNNER_USER $user
 ENV RUNNER_HOME $home
 
-RUN dnf -y install \
+RUN dnf -y install --enablerepo=crb \
         libicu \
         lttng-ust \
         tar \
