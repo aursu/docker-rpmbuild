@@ -1,8 +1,8 @@
-ARG rocky=8.10.20240528
+ARG rocky=10.0.20250606
 FROM aursu/rpmbuild:${rocky}-docker
 
-ARG version=2.299.1
-ARG shasum=147c14700c6cb997421b9a239c012197f11ea9854cd901ee88ead6fe73a72c74
+ARG version=2.328.0
+ARG shasum=01066fad3a2893e63e6ca880ae3a1fad5bf9329d60e77ee15f2b97c148c3cd4e
 
 ARG DISTRO=actions-runner-linux-x64-${version}.tar.gz
 ARG RELEASE_URL="https://github.com/actions/runner/releases/download/v${version}/${DISTRO}"

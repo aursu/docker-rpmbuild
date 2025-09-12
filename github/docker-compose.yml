@@ -3,16 +3,16 @@ services:
     build:
       context: runner
       args:
-        rocky: $RL8
+        rocky: $RL10
         version: $GITHUB_RUNNER_TAG
         shasum: $GITHUB_RUNNER_SHA256
-    image: "aursu/rockylinux:${RL8}-github-runner-${GITHUB_RUNNER_TAG}"
+    image: "aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
   githubrunnerconfig:
     build:
       context: runner
       dockerfile: Dockerfile.config
       args:
-        rocky: $RL8
+        rocky: $RL10
         version: $GITHUB_RUNNER_TAG
     env_file:
       - secrets/github.env
@@ -23,7 +23,7 @@ services:
       context: runner
       dockerfile: Dockerfile.delete
       args:
-        rocky: $RL8
+        rocky: $RL10
         version: $GITHUB_RUNNER_TAG
     env_file:
       - secrets/github.env
@@ -34,7 +34,7 @@ services:
       context: runner
       dockerfile: Dockerfile.run
       args:
-        rocky: $RL8
+        rocky: $RL10
         version: $GITHUB_RUNNER_TAG
     environment:
       DOCKER_TLS_CERTDIR: /certs
