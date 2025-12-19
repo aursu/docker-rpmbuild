@@ -1,4 +1,4 @@
-ARG centos=stream9-20240429.0
+ARG centos=stream9-20251215.0
 ARG image=scm
 FROM aursu/centos:${centos}-${image}
 

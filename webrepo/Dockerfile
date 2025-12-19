@@ -1,4 +1,4 @@
-ARG rocky=10.0.20250606
+ARG rocky=10.1.20251126
 FROM aursu/rockylinux:${rocky}-httpd
 
 # enabe alias_module to use it for /centos location alias
