@@ -1,6 +1,6 @@
 ARG rocky=9.7.20251123
 ARG image=scm
-FROM aursu/rockylinux:${rocky}-${image}
+FROM ghcr.io/aursu/rockylinux:${rocky}-${image}
 
 ARG builduser=root
 ARG buildgroup=root

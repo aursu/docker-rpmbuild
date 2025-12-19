@@ -1,5 +1,5 @@
 ARG rocky=10.1.20251126
-FROM aursu/rockylinux:${rocky}-httpd
+FROM ghcr.io/aursu/rockylinux:${rocky}-httpd
 
 # enabe alias_module to use it for /centos location alias
 COPY system/etc/httpd/conf.modules.d/00-extra.conf \

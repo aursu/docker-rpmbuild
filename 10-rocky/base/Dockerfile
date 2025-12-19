@@ -1,6 +1,6 @@
 ARG rocky=10.1.20251126
 ARG image=scm
-FROM aursu/rockylinux:${rocky}-${image}
+FROM ghcr.io/aursu/rockylinux:${rocky}-${image}
 
 ARG builduser=centos
 ARG buildgroup=centos
