@@ -3,17 +3,15 @@ ARG image=rpmb
 FROM aursu/rpmbuild:${rocky}-${image}
 
 ARG DOCKER_VERSION="26.1.3"
-ARG COMPOSE_VERSION="2.29.0"
-ARG RELEASE_URL="https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-x86_64"
+ARG BUILDX_VERSION="0.14.0"
+ARG COMPOSE_VERSION="2.27.0"
 
 # install Docker CLI
 RUN yum-config-manager \
         --add-repo \
         https://download.docker.com/linux/centos/docker-ce.repo \
-    && dnf -y install docker-ce-cli-${DOCKER_VERSION} \
+    && dnf -y install \
+        docker-ce-cli-${DOCKER_VERSION} \
+		docker-buildx-plugin-${BUILDX_VERSION} \
+		docker-compose-plugin-${COMPOSE_VERSION} \
     && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
-
-# install Docker Compose
-RUN curl -L ${RELEASE_URL} -o /usr/local/bin/docker-compose \
-    && chmod +x /usr/local/bin/docker-compose \
-    && ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
