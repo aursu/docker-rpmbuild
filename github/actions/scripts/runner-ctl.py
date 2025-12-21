@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
+from urllib.parse import urlparse
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,12 +17,15 @@ logger = logging.getLogger("runner-config")
 
 class RunnerConfigurator:
     def __init__(self):
-        self.runner_home = Path(os.getenv("RUNNER_HOME", os.getcwd()))
-        self.root_dir = Path("/usr/local/runner")
+        self.runner_home = Path(os.getenv("RUNNER_HOME", "/home/runner"))
+        self.runner_root = Path(os.getenv("RUNNER_ROOT", "/usr/local/runner"))
+        self.binary = self.runner_root / "bin" / "Runner.Listener"
+
         self.pat = os.getenv("GITHUB_PAT")
         self.org_name = os.getenv("ORG_NAME")
+        self.github_url = os.getenv("GITHUB_URL")
 
-        # Параметры для передачи в Listener
+        # Configuration parameters for Runner.Listener
         self.config_args = {
             "--url": os.getenv("GITHUB_URL"),
             "--name": f"{os.getenv('RUNNER_NAME')}-{os.gethostname()}",
@@ -30,16 +34,64 @@ class RunnerConfigurator:
             "--work": os.getenv("RUNNER_WORKSPACE", "_work"),
         }
 
+    def _get_api_info(self, action="registration"):
+        """Determines the API URL based on GITHUB_URL (Organization vs Repository scope)."""
+        parsed = urlparse(self.github_url)
+        parts = [p for p in parsed.path.split('/') if p]
+
+        if len(parts) == 1:
+            # Organization level scope
+            scope_path = f"orgs/{parts[0]}"
+        elif len(parts) >= 2:
+            # Repository level scope
+            scope_path = f"repos/{parts[0]}/{parts[1]}"
+        else:
+            raise ValueError(f"Invalid GITHUB_URL: {self.github_url}")
+
+        return f"https://api.github.com/{scope_path}/actions/runners/{action}-token"
+
+    def _fetch_token(self, action="registration"):
+        """
+        Fetches the runner token with the following priority:
+        Priority 1: GITHUB_TOKEN (direct registration/removal token).
+        Priority 2: Generated via GITHUB_PAT (Personal Access Token).
+        """
+        # Check for direct token availability (highest priority)
+        runner_token = os.getenv("GITHUB_TOKEN")
+        if runner_token:
+            logger.info(f"Using provided GITHUB_TOKEN for {action} (Priority: High)")
+            return runner_token
+
+        # If no direct token is provided, check for PAT to call GitHub API
+        if not self.pat:
+            logger.error(f"Error: Neither GITHUB_TOKEN nor GITHUB_PAT provided for {action}.")
+            sys.exit(1)
+
+        api_url = self._get_api_info(action)
+        logger.info(f"Fetching {action} token from GitHub API using GITHUB_PAT...")
+
+        req = Request(api_url, method="POST")
+        req.add_header("Authorization", f"Bearer {self.pat}")
+        req.add_header("Accept", "application/vnd.github+json")
+        req.add_header("X-GitHub-Api-Version", "2022-11-28")
+
+        try:
+            with urlopen(req) as resp:
+                return json.loads(resp.read().decode())["token"]
+        except Exception as e:
+            logger.error(f"Failed to fetch {action} token via API: {e}")
+            sys.exit(1)
+
     def check_dependencies(self):
-        """Реализация проверок из вашего config.sh"""
+        """Validates runtime dependencies required by the GitHub Actions runner."""
         logger.info("Checking dependencies for .NET Core 6.0...")
 
-        # 1. Проверка на root
+        # 1. Verify runner is not executed as root user
         if os.getuid() == 0 and not os.getenv("RUNNER_ALLOW_RUNASROOT"):
             logger.error("Must not run with sudo / root")
             sys.exit(1)
 
-        # 2. Проверка критических библиотек (аналог ldd | grep 'not found')
+        # 2. Validate critical system libraries (equivalent to ldd | grep 'not found')
         libs_to_check = [
             "libcoreclr.so",
             "libSystem.Security.Cryptography.Native.OpenSsl.so",
@@ -47,7 +99,7 @@ class RunnerConfigurator:
         ]
 
         for lib in libs_to_check:
-            lib_path = self.root_dir / "bin" / lib
+            lib_path = self.runner_root / "bin" / lib
             try:
                 result = subprocess.run(["ldd", str(lib_path)], capture_output=True, text=True, check=True)
                 if "not found" in result.stdout:
@@ -60,7 +112,7 @@ class RunnerConfigurator:
         logger.info("All dependencies found.")
 
     def get_token(self, token_type="registration"):
-        """Получение токена (Registration/Remove) через GitHub API"""
+        """Retrieves runner token (Registration/Remove) via GitHub REST API."""
         if not self.pat:
             logger.error("GITHUB_PAT environment variable is not set")
             sys.exit(1)
@@ -94,20 +146,20 @@ class RunnerConfigurator:
             sys.exit(1)
 
     def run_listener(self, mode="configure"):
-        """Прямой вызов бинарного файла Runner.Listener"""
-        listener_bin = self.root_dir / "bin" / "Runner.Listener"
+        """Executes the Runner.Listener binary with specified configuration mode."""
+        listener_bin = self.runner_root / "bin" / "Runner.Listener"
 
         if not listener_bin.exists():
             logger.error(f"Binary not found: {listener_bin}")
             sys.exit(1)
 
-        # Валидация обязательных параметров для configure
+        # Validate required parameters for configure mode
         if mode == "configure":
             if not self.config_args.get("--url"):
                 logger.error("GITHUB_URL environment variable is required")
                 sys.exit(1)
 
-        # Подготовка аргументов
+        # Prepare command-line arguments
         token = self.get_token("registration" if mode == "configure" else "remove")
 
         cmd = [str(listener_bin), mode, "--unattended", "--token", token]
@@ -119,10 +171,10 @@ class RunnerConfigurator:
 
         logger.info(f"Executing: {' '.join(cmd)}")
 
-        # Важно: Runner.Listener ожидает переменные из env.sh
-        # Мы можем передать их через env параметр
+        # Note: Runner.Listener expects environment variables from env.sh
+        # These can be passed via the env parameter
         current_env = os.environ.copy()
-        # Если в env.sh есть специфические переменные, добавляем их тут
+        # Add any specific variables from env.sh here if required
 
         result = subprocess.run(cmd, cwd=self.runner_home, env=current_env)
         if result.returncode != 0:
@@ -133,6 +185,6 @@ if __name__ == "__main__":
     configurator = RunnerConfigurator()
     configurator.check_dependencies()
 
-    # Режим работы: configure (по умолчанию) или remove
+    # Operation mode: configure (default) or remove
     mode = "remove" if len(sys.argv) > 1 and sys.argv[1] == "remove" else "configure"
     configurator.run_listener(mode)
