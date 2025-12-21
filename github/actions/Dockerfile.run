@@ -1,7 +1,7 @@
 ARG rocky=10.1.20251126
-ARG version=2.328.0
+ARG version=2.330.0
 FROM aursu/rockylinux:${rocky}-actions-runner-${version}
 
 VOLUME $RUNNER_HOME
 
-CMD $RUNNER_HOME/run.sh
+CMD $RUNNER_ROOT/run.sh
