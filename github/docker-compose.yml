@@ -1,41 +1,41 @@
 services:
   githubrunnerbase:
     build:
-      context: runner
+      context: actions
       args:
         rocky: $RL10
-        version: $GITHUB_RUNNER_TAG
-        shasum: $GITHUB_RUNNER_SHA256
+        RUNNER_VERSION: $GITHUB_RUNNER_TAG
+        RUNNER_CHECKSUM: $GITHUB_RUNNER_SHA256
     image: "aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
   githubrunnerconfig:
     build:
-      context: runner
+      context: actions
       dockerfile: Dockerfile.config
       args:
         rocky: $RL10
-        version: $GITHUB_RUNNER_TAG
+        RUNNER_VERSION: $GITHUB_RUNNER_TAG
     env_file:
       - secrets/github.env
     volumes:
       - githubrunner:/home/runner
   githubrunnerdelete:
     build:
-      context: runner
+      context: actions
       dockerfile: Dockerfile.delete
       args:
         rocky: $RL10
-        version: $GITHUB_RUNNER_TAG
+        RUNNER_VERSION: $GITHUB_RUNNER_TAG
     env_file:
       - secrets/github.env
     volumes:
       - githubrunner:/home/runner
   githubrunner:
     build:
-      context: runner
+      context: actions
       dockerfile: Dockerfile.run
       args:
         rocky: $RL10
-        version: $GITHUB_RUNNER_TAG
+        RUNNER_VERSION: $GITHUB_RUNNER_TAG
     environment:
       DOCKER_TLS_CERTDIR: /certs
       DOCKER_CERT_PATH: /certs/client
