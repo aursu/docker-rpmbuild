@@ -141,12 +141,6 @@ class RunnerController:
             logger.error("Must not run as root. Set RUNNER_ALLOW_RUNASROOT to override.")
             sys.exit(1)
 
-    def check_binary_exists(self):
-        """Verify Runner.Listener binary exists"""
-        if not self.listener_bin.exists():
-            logger.error(f"Runner.Listener binary not found: {self.listener_bin}")
-            sys.exit(1)
-
     def create_env_files(self):
         """Create .env and .path files (from env.sh)"""
         env_file = self.runner_home / ".env"
@@ -402,7 +396,6 @@ def main():
 
     # Common checks
     controller.check_not_root()
-    controller.check_binary_exists()
 
     # Execute mode
     if mode == "configure":
