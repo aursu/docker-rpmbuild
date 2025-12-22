@@ -82,35 +82,6 @@ class RunnerConfigurator:
             logger.error(f"Failed to fetch {action} token via API: {e}")
             sys.exit(1)
 
-    def check_dependencies(self):
-        """Validates runtime dependencies required by the GitHub Actions runner."""
-        logger.info("Checking dependencies for .NET Core 6.0...")
-
-        # 1. Verify runner is not executed as root user
-        if os.getuid() == 0 and not os.getenv("RUNNER_ALLOW_RUNASROOT"):
-            logger.error("Must not run with sudo / root")
-            sys.exit(1)
-
-        # 2. Validate critical system libraries (equivalent to ldd | grep 'not found')
-        libs_to_check = [
-            "libcoreclr.so",
-            "libSystem.Security.Cryptography.Native.OpenSsl.so",
-            "libSystem.IO.Compression.Native.so"
-        ]
-
-        for lib in libs_to_check:
-            lib_path = self.runner_root / "bin" / lib
-            try:
-                result = subprocess.run(["ldd", str(lib_path)], capture_output=True, text=True, check=True)
-                if "not found" in result.stdout:
-                    logger.error(f"Dependency missing for {lib}:\n{result.stdout}")
-                    sys.exit(1)
-            except subprocess.CalledProcessError:
-                logger.error(f"Could not run ldd on {lib_path}")
-                sys.exit(1)
-
-        logger.info("All dependencies found.")
-
     def get_token(self, token_type="registration"):
         """Retrieves runner token (Registration/Remove) via GitHub REST API."""
         if not self.pat:
@@ -183,7 +154,6 @@ class RunnerConfigurator:
 
 if __name__ == "__main__":
     configurator = RunnerConfigurator()
-    configurator.check_dependencies()
 
     # Operation mode: configure (default) or remove
     mode = "remove" if len(sys.argv) > 1 and sys.argv[1] == "remove" else "configure"
