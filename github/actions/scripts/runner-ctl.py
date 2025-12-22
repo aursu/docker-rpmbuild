@@ -22,7 +22,7 @@ class RunnerConfigurator:
         self.binary = self.runner_root / "bin" / "Runner.Listener"
 
         self.pat = os.getenv("GITHUB_PAT")
-        self.org_name = os.getenv("ORG_NAME")
+        self.org = os.getenv("GITHUB_ORG")
         self.github_url = os.getenv("GITHUB_URL")
 
         # Configuration parameters for Runner.Listener
@@ -87,11 +87,11 @@ class RunnerConfigurator:
         if not self.pat:
             logger.error("GITHUB_PAT environment variable is not set")
             sys.exit(1)
-        if not self.org_name:
-            logger.error("ORG_NAME environment variable is not set")
+        if not self.org:
+            logger.error("GITHUB_ORG environment variable is not set")
             sys.exit(1)
 
-        url = f"https://api.github.com/orgs/{self.org_name}/actions/runners/{token_type}-token"
+        url = f"https://api.github.com/orgs/{self.org}/actions/runners/{token_type}-token"
         headers = {
             "Authorization": f"Bearer {self.pat}",
             "Accept": "application/vnd.github+json",
@@ -107,7 +107,7 @@ class RunnerConfigurator:
             if e.code == 401:
                 logger.error("Invalid or expired GitHub PAT token")
             elif e.code == 404:
-                logger.error(f"Organization '{self.org_name}' not found or no access")
+                logger.error(f"Organization '{self.org}' not found or no access")
             sys.exit(1)
         except URLError as e:
             logger.error(f"Network error: {e.reason}")
