@@ -68,7 +68,7 @@ class RunnerConfigurator:
         # Check for direct token availability (highest priority)
         runner_token = os.getenv("GITHUB_TOKEN")
         if runner_token:
-            logger.info(f"Using provided GITHUB_TOKEN for {action} (Priority: High)")
+            logger.info(f"Using pre-provisioned GITHUB_TOKEN for {action}, skipping API call")
             return runner_token
 
         # If no direct token is provided, check for PAT to call GitHub API
@@ -87,36 +87,12 @@ class RunnerConfigurator:
         try:
             with urlopen(req) as resp:
                 return json.loads(resp.read().decode())["token"]
-        except Exception as e:
-            logger.error(f"Failed to fetch {action} token via API: {e}")
-            sys.exit(1)
-
-    def get_token(self, token_type="registration"):
-        """Retrieves runner token (Registration/Remove) via GitHub REST API."""
-        if not self.pat:
-            logger.error("GITHUB_PAT environment variable is not set")
-            sys.exit(1)
-        if not self.org:
-            logger.error("GITHUB_ORG environment variable is not set")
-            sys.exit(1)
-
-        url = f"https://api.github.com/orgs/{self.org}/actions/runners/{token_type}-token"
-        headers = {
-            "Authorization": f"Bearer {self.pat}",
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28"
-        }
-
-        try:
-            req = Request(url, headers=headers, method="POST")
-            with urlopen(req) as resp:
-                return json.loads(resp.read().decode())["token"]
         except HTTPError as e:
             logger.error(f"GitHub API error: {e.code} - {e.reason}")
             if e.code == 401:
                 logger.error("Invalid or expired GitHub PAT token")
             elif e.code == 404:
-                logger.error(f"Organization '{self.org}' not found or no access")
+                logger.error("Organization/repository not found or insufficient permissions")
             sys.exit(1)
         except URLError as e:
             logger.error(f"Network error: {e.reason}")
@@ -140,7 +116,7 @@ class RunnerConfigurator:
                 sys.exit(1)
 
         # Prepare command-line arguments
-        token = self.get_token("registration" if mode == "configure" else "remove")
+        token = self._fetch_token("registration" if mode == "configure" else "remove")
 
         cmd = [str(listener_bin), mode, "--unattended", "--token", token]
 
