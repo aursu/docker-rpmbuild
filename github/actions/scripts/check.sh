@@ -15,6 +15,19 @@ set -e
 
 RUNNER_ROOT="${1:-/usr/local/runner}"
 
+# Check if Runner.Listener binary exists
+LISTENER_BIN="$RUNNER_ROOT/bin/Runner.Listener"
+if [ ! -f "$LISTENER_BIN" ]; then
+    echo "ERROR: Runner.Listener binary not found: $LISTENER_BIN"
+    echo "Please ensure the GitHub Actions Runner is installed at: $RUNNER_ROOT"
+    exit 1
+fi
+
+if [ ! -x "$LISTENER_BIN" ]; then
+    echo "ERROR: Runner.Listener is not executable: $LISTENER_BIN"
+    exit 1
+fi
+
 command -v ldd >/dev/null
 if [ $? -ne 0 ]; then
     echo "Can not find 'ldd'. Please install 'ldd' and try again."
