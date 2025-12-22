@@ -28,7 +28,7 @@ class RunnerConfigurator:
         # Configuration parameters for Runner.Listener
         self.config_args = {
             "--url": os.getenv("GITHUB_URL"),
-            "--name": f"{os.getenv('RUNNER_NAME')}-{os.gethostname()}",
+            "--name": os.getenv("RUNNER_NAME") or f"github-actions-runner-{os.gethostname()}",
             "--runnergroup": os.getenv("RUNNER_GROUP", "Default"),
             "--labels": os.getenv("RUNNER_LABELS", "self-hosted,linux,x64"),
             "--work": os.getenv("RUNNER_WORKSPACE", "_work"),
