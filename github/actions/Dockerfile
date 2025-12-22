@@ -35,7 +35,9 @@ ENV RUNNER_MANUALLY_TRAP_SIG=1
 ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 
 USER root
+
 RUN mkdir -p $RUNNER_ROOT
+COPY scripts/check.sh $RUNNER_ROOT/check.sh
 
 RUN groupadd -g $gid $group \
   && useradd -d $RUNNER_HOME -u $uid -g $gid -m -s /bin/bash $RUNNER_USER \
@@ -55,7 +57,8 @@ RUN set -ex \
     && curl -O -L $RELEASE_URL \
     && echo "${RUNNER_CHECKSUM} ${DISTRO}" | sha256sum -c \
     && tar zxf $DISTRO \
-    && rm -f $DISTRO
+    && rm -f $DISTRO \
+    && ./check.sh
 
 RUN set -ex \
     && curl -O -L $HOOKS_URL \
