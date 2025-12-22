@@ -4,7 +4,8 @@
 # This script should be run during Docker image build to verify all required dependencies
 # are installed for the GitHub Actions Runner (dotnet Core 6.0)
 #
-# Usage: ./check-dependencies.sh [RUNNER_ROOT]
+# Usage: <script> [RUNNER_ROOT]
+#   RUNNER_ROOT - Runner installation directory (default: /usr/local/runner)
 #
 # Exit codes:
 #   0 - All dependencies satisfied
