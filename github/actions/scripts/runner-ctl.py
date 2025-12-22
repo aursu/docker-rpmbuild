@@ -46,9 +46,18 @@ class RunnerConfigurator:
             # Repository level scope
             scope_path = f"repos/{parts[0]}/{parts[1]}"
         else:
-            raise ValueError(f"Invalid GITHUB_URL: {self.github_url}")
+            raise ValueError(f"Invalid GITHUB_URL format: {self.github_url}")
 
-        return f"https://api.github.com/{scope_path}/actions/runners/{action}-token"
+        # Determine API base URL based on GitHub instance type
+        # GitHub.com uses dedicated API subdomain
+        if parsed.hostname == "github.com":
+            api_base = "https://api.github.com"
+        else:
+            # GitHub Enterprise Server uses /api/v3 prefix
+            # Preserve scheme and netloc (including port if present)
+            api_base = f"{parsed.scheme}://{parsed.netloc}/api/v3"
+
+        return f"{api_base}/{scope_path}/actions/runners/{action}-token"
 
     def _fetch_token(self, action="registration"):
         """
