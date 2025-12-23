@@ -371,7 +371,6 @@ class RunnerController:
             logger.error(f"Removal failed with code {result.returncode}")
             sys.exit(result.returncode)
 
-
 def main():
     """Main entry point"""
     # Determine mode from command line
