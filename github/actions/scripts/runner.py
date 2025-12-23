@@ -13,7 +13,7 @@ ALGORITHM:
    - Set up directory paths (RUNNER_HOME, RUNNER_ROOT)
    - Validate Runner.Listener binary exists
 
-2. CONFIGURE MODE (./runner-ctl.py configure):
+2. CONFIGURE MODE (./runner.py configure):
    - Create .env file with environment variables (LANG, JAVA_HOME, ANT_HOME, etc.)
    - Create .path file with current PATH
    - Fetch registration token (GITHUB_TOKEN or via GITHUB_PAT API call)
@@ -21,7 +21,7 @@ ALGORITHM:
               --name <name> --labels <labels> --work <work> [--runnergroup <group>]
               [--disableupdate] (if RUNNER_DISABLE_UPDATE is set)
 
-3. RUN MODE (./runner-ctl.py run or ./runner-ctl.py):
+3. RUN MODE (./runner.py run or ./runner.py):
    - Set up signal handlers (SIGINT, SIGTERM) for graceful shutdown
    - Main run loop:
      a. Execute: bin/Runner.Listener run [arguments]
@@ -34,26 +34,18 @@ ALGORITHM:
         - Other: Unknown error, stop service
      c. If interrupted by signal, exit gracefully
      d. Loop until exit condition met
-        - 1: Terminated error, stop service
-        - 2: Retryable error, sleep 5 seconds and restart
-        - 3: Runner update, wait for update.finished flag file (max 30s), restart
-        - 4: Ephemeral runner update, wait for update.finished flag (max 30s), restart
-        - 5: Session conflict, stop service
-        - Other: Unknown error, stop service
-     c. If interrupted by signal, exit gracefully
-     d. Loop until exit condition met
 
-4. REMOVE/DELETE MODE (./runner-ctl.py remove or ./runner-ctl.py delete):
+4. REMOVE/DELETE MODE (./runner.py remove or ./runner.py delete):
    - Fetch removal token (GITHUB_TOKEN or via GITHUB_PAT API call)
    - Execute: bin/Runner.Listener remove --token <token>
 
 USAGE:
 ======
-  ./runner-ctl.py configure  - Configure and register runner
-  ./runner-ctl.py run        - Run the runner listener (default)
-  ./runner-ctl.py            - Same as 'run'
-  ./runner-ctl.py remove     - Remove/unregister runner
-  ./runner-ctl.py delete     - Alias for 'remove'
+  ./runner.py configure  - Configure and register runner
+  ./runner.py run        - Run the runner listener (default)
+  ./runner.py            - Same as 'run'
+  ./runner.py remove     - Remove/unregister runner
+  ./runner.py delete     - Alias for 'remove'
 
 ENVIRONMENT VARIABLES:
 ======================
@@ -92,7 +84,6 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 from urllib.parse import urlparse
-import shutil
 
 logging.basicConfig(
     level=logging.INFO,
@@ -359,8 +350,6 @@ class RunnerController:
             "remove",
             "--token", token
         ]
-
-        logger.info("Removing runner...")
 
         # Execute
         result = subprocess.run(cmd, cwd=self.runner_home)
