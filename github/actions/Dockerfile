@@ -20,7 +20,7 @@ ARG RELEASE_URL="https://github.com/actions/runner/releases/download/v${RUNNER_V
 ARG HOOKS_DISTRO="actions-runner-hooks-k8s-${RUNNER_CONTAINER_HOOKS_VERSION}.zip"
 ARG HOOKS_URL="https://github.com/actions/runner-container-hooks/releases/download/v${RUNNER_CONTAINER_HOOKS_VERSION}/${HOOKS_DISTRO}"
 
-ARG RUNNER_ROOT=/usr/local/runner
+ARG dest=/usr/local/runner
 
 ARG user=runner
 ARG group=runner
@@ -28,21 +28,22 @@ ARG home=/home/${user}
 ARG uid=1000
 ARG gid=1000
 
-ENV RUNNER_USER=$user
+# Runtime environment variables (used by runner.py and Runner.Listener)
 ENV RUNNER_HOME=$home
+ENV RUNNER_ROOT=$dest
 
-ENV RUNNER_MANUALLY_TRAP_SIG=1
 ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 ENV RUNNER_DISABLE_UPDATE=1
 
 USER root
 
-RUN mkdir -p $RUNNER_ROOT
-COPY scripts/check.sh $RUNNER_ROOT/check.sh
+# Use ARG (build-time) for COPY since path is fixed at build time
+COPY --chmod=755 scripts/check.sh $dest/check.sh
+COPY --chmod=755 scripts/runner.py $dest/runner.py
 
 RUN groupadd -g $gid $group \
-  && useradd -d $RUNNER_HOME -u $uid -g $gid -m -s /bin/bash $RUNNER_USER \
-  && usermod -aG docker $RUNNER_USER
+  && useradd -d $home -u $uid -g $gid -m -s /bin/bash $user \
+  && usermod -aG docker $user
 
 RUN dnf -y install --enablerepo=crb \
         libicu \
@@ -52,7 +53,7 @@ RUN dnf -y install --enablerepo=crb \
         python3.12 \
     && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
-WORKDIR $RUNNER_ROOT
+WORKDIR $dest
 
 RUN set -ex \
     && curl -O -L $RELEASE_URL \
@@ -68,5 +69,5 @@ RUN set -ex \
     && unzip $HOOKS_DISTRO -d k8s \
     && rm -f $HOOKS_DISTRO
 
-USER $RUNNER_USER
-WORKDIR $RUNNER_HOME
+USER $user
+WORKDIR $home
