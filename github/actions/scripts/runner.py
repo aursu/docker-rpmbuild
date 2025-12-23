@@ -389,7 +389,7 @@ def main():
             sys.exit(0)
         else:
             print(f"Unknown command: {sys.argv[1]}")
-            print("Usage: runner-ctl.py [configure|run|remove|delete]")
+            print("Usage: runner.py [configure|run|remove|delete]")
             sys.exit(1)
 
     # Initialize controller
