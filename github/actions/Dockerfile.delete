@@ -2,8 +2,10 @@ ARG rocky=10.1.20251126
 ARG version=2.330.0
 FROM aursu/rockylinux:${rocky}-actions-runner-${version}
 
-ENV GITHUB_TOKEN=
+# GITHUB_TOKEN can be empty - runner.py will fall back to GITHUB_PAT
+# ENV GITHUB_TOKEN=
 
 VOLUME $RUNNER_HOME
 
-CMD $RUNNER_ROOT/config.sh remove --token $GITHUB_TOKEN
+# runner.py remove reads token from ENV (GITHUB_TOKEN or GITHUB_PAT)
+CMD $RUNNER_ROOT/runner.py remove
