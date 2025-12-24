@@ -1,4 +1,5 @@
 services:
+  # Base image with GitHub Actions Runner installed
   githubrunnerbase:
     build:
       context: actions
@@ -7,35 +8,34 @@ services:
         RUNNER_VERSION: $GITHUB_RUNNER_TAG
         RUNNER_CHECKSUM: $GITHUB_RUNNER_SHA256
     image: "aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
+
+  # Configure runner (run once to register)
+  # Usage: docker compose run --rm githubrunnerconfig
   githubrunnerconfig:
-    build:
-      context: actions
-      dockerfile: Dockerfile.config
-      args:
-        rocky: $RL10
-        RUNNER_VERSION: $GITHUB_RUNNER_TAG
+    image: "aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
+    command: /usr/local/runner/runner.py configure --replace
     env_file:
       - secrets/github.env
     volumes:
       - githubrunner:/home/runner
+
+  # Remove/unregister runner
+  # Usage: docker compose run --rm githubrunnerdelete
   githubrunnerdelete:
-    build:
-      context: actions
-      dockerfile: Dockerfile.delete
-      args:
-        rocky: $RL10
-        RUNNER_VERSION: $GITHUB_RUNNER_TAG
+    image: "aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
+    command: /usr/local/runner/runner.py remove
     env_file:
       - secrets/github.env
     volumes:
       - githubrunner:/home/runner
+
+  # Run the configured runner (long-running service)
+  # Usage: docker compose up -d githubrunner
   githubrunner:
-    build:
-      context: actions
-      dockerfile: Dockerfile.run
-      args:
-        rocky: $RL10
-        RUNNER_VERSION: $GITHUB_RUNNER_TAG
+    image: "aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
+    command: /usr/local/runner/runner.py
+    env_file:
+      - secrets/github.env
     environment:
       DOCKER_TLS_CERTDIR: /certs
       DOCKER_CERT_PATH: /certs/client
