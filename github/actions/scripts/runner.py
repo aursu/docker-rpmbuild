@@ -104,6 +104,21 @@ class RunnerController:
         'NVM_BIN', 'NVM_PATH', 'LD_LIBRARY_PATH', 'PERL5LIB'
     ]
 
+    # Runner configuration files to persist on volume
+    CONFIG_FILES = [
+        '.runner',
+        '.runner_migrated',
+        '.credentials',
+        '.credentials_migrated',
+        '.credentials_rsaparams',
+        '.service',
+        '.credential_store',
+        '.certificates',
+        '.options',
+        '.setup_info',
+        '.telemetry',
+    ]
+
     def __init__(self):
         self.runner_home = Path(os.getenv("RUNNER_HOME", "/home/runner"))
         self.runner_root = Path(os.getenv("RUNNER_ROOT", "/usr/local/runner"))
@@ -239,31 +254,16 @@ class RunnerController:
 
     def _persist_config(self):
         """
-        Persist runner configuration files to volume-mounted storage.
+        Move newly created runner configuration files to volume-mounted storage.
         
-        Moves configuration files from the ephemeral installation directory 
-        to the persistent home directory (volume) and creates symlinks back 
-        to ensure configuration survives container restarts.
+        Called after runner configuration to persist files from the ephemeral
+        installation directory to the persistent home directory (volume).
         """
-        well_known_config_files = [
-            '.runner',
-            '.runner_migrated',
-            '.credentials',
-            '.credentials_migrated',
-            '.credentials_rsaparams',
-            '.service',
-            '.credential_store',
-            '.certificates',
-            '.options',
-            '.setup_info',
-            '.telemetry',
-        ]
+        for filename in self.CONFIG_FILES:
+            install_path = self.runner_root / filename
+            volume_path = self.runner_home / filename
 
-        for filename in well_known_config_files:
-            install_path = self.runner_root / filename  # /usr/local/runner/.runner
-            volume_path = self.runner_home / filename   # /home/runner/.runner
-
-            # Step 1: Move newly created config file/directory from install directory to volume
+            # Move newly created config file/directory from install directory to volume
             if install_path.exists() and not install_path.is_symlink():
                 logger.info(f"Persisting {filename} to volume...")
                 # Remove existing file/directory on volume if present
@@ -273,17 +273,33 @@ class RunnerController:
                     else:
                         volume_path.unlink()  # Handles both files and symlinks
 
-                # Move physical file/directory to volume
+                # Move to volume (works for both files and directories)
                 install_path.replace(volume_path)
+                logger.info(f"Moved {filename} to volume")
 
-            # Step 2: Create symlink from install directory to volume
+    def _restore_config_links(self):
+        """
+        Restore symlinks from installation directory to volume-mounted storage.
+        
+        Called before running to ensure Runner.Listener can access configuration
+        files from the installation directory that are actually stored on the volume.
+        This enables configuration persistence across container restarts.
+        """
+        for filename in self.CONFIG_FILES:
+            install_path = self.runner_root / filename
+            volume_path = self.runner_home / filename
+
+            # Create symlink from install directory to volume
             # Runner reads from install_path but accesses volume_path
             if volume_path.exists():
+                # Remove existing file or symlink at install location
                 if install_path.exists() or install_path.is_symlink():
                     install_path.unlink(missing_ok=True)
 
                 install_path.symlink_to(volume_path)
                 logger.info(f"Linked {install_path} -> {volume_path}")
+            else:
+                logger.debug(f"Config file {filename} not found on volume, skipping symlink")
 
     def configure(self):
         """Configure and register the runner"""
@@ -328,6 +344,7 @@ class RunnerController:
         if result.returncode == 0:
             logger.info("Runner configured successfully")
             self._persist_config()
+            self._restore_config_links()
         else:
             logger.error(f"Configuration failed with code {result.returncode}")
             sys.exit(result.returncode)
@@ -336,7 +353,7 @@ class RunnerController:
         """Run the runner listener with auto-restart logic"""
         logger.info("Starting runner...")
 
-        self._persist_config()
+        self._restore_config_links()
 
         # Set up signal handlers
         signal.signal(signal.SIGINT, self.signal_handler)
