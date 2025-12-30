@@ -34,6 +34,7 @@ ENV RUNNER_ROOT=$dest
 
 ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 ENV RUNNER_DISABLE_UPDATE=1
+ENV ACTIONS_RUNNER_CONTAINER_HOOKS=$RUNNER_ROOT/k8s
 
 USER root
 
@@ -55,6 +56,10 @@ RUN dnf -y install --enablerepo=crb \
 
 WORKDIR $dest
 
+RUN chown -R $user:$group $dest
+
+USER $user
+
 RUN set -ex \
     && curl -O -L $RELEASE_URL \
     && echo "${RUNNER_CHECKSUM} ${DISTRO}" | sha256sum -c \
@@ -69,5 +74,4 @@ RUN set -ex \
     && unzip $HOOKS_DISTRO -d k8s \
     && rm -f $HOOKS_DISTRO
 
-USER $user
 WORKDIR $home
