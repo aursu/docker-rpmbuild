@@ -277,6 +277,8 @@ class RunnerController:
                 install_path.replace(volume_path)
                 logger.info(f"Moved {filename} to volume")
 
+        self._restore_config_links()
+
     def _restore_config_links(self):
         """
         Restore symlinks from installation directory to volume-mounted storage.
@@ -344,7 +346,6 @@ class RunnerController:
         if result.returncode == 0:
             logger.info("Runner configured successfully")
             self._persist_config()
-            self._restore_config_links()
         else:
             logger.error(f"Configuration failed with code {result.returncode}")
             sys.exit(result.returncode)
@@ -353,7 +354,8 @@ class RunnerController:
         """Run the runner listener with auto-restart logic"""
         logger.info("Starting runner...")
 
-        self._restore_config_links()
+        # Persist any orphaned configs and restore symlinks before starting
+        self._persist_config()
 
         # Set up signal handlers
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -383,6 +385,8 @@ class RunnerController:
             elif return_code == 2:
                 logger.info("Runner listener exit with retryable error, re-launch runner in 5 seconds.")
                 time.sleep(5)
+                # Check for broken symlinks before restart
+                self._persist_config()
                 continue
 
             elif return_code in (3, 4):
