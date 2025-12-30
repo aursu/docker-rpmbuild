@@ -80,6 +80,7 @@ import logging
 import time
 import signal
 import socket
+import shutil
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
@@ -236,6 +237,54 @@ class RunnerController:
         logger.info(f"Received {sig_name}, shutting down gracefully...")
         self.shutdown_requested = True
 
+    def _persist_config(self):
+        """
+        Persist runner configuration files to volume-mounted storage.
+        
+        Moves configuration files from the ephemeral installation directory 
+        to the persistent home directory (volume) and creates symlinks back 
+        to ensure configuration survives container restarts.
+        """
+        well_known_config_files = [
+            '.runner',
+            '.runner_migrated',
+            '.credentials',
+            '.credentials_migrated',
+            '.credentials_rsaparams',
+            '.service',
+            '.credential_store',
+            '.certificates',
+            '.options',
+            '.setup_info',
+            '.telemetry',
+        ]
+
+        for filename in well_known_config_files:
+            install_path = self.runner_root / filename  # /usr/local/runner/.runner
+            volume_path = self.runner_home / filename   # /home/runner/.runner
+
+            # Step 1: Move newly created config file/directory from install directory to volume
+            if install_path.exists() and not install_path.is_symlink():
+                logger.info(f"Persisting {filename} to volume...")
+                # Remove existing file/directory on volume if present
+                if volume_path.exists():
+                    if volume_path.is_dir():
+                        shutil.rmtree(volume_path)
+                    else:
+                        volume_path.unlink()  # Handles both files and symlinks
+
+                # Move physical file/directory to volume
+                install_path.replace(volume_path)
+
+            # Step 2: Create symlink from install directory to volume
+            # Runner reads from install_path but accesses volume_path
+            if volume_path.exists():
+                if install_path.exists() or install_path.is_symlink():
+                    install_path.unlink(missing_ok=True)
+
+                install_path.symlink_to(volume_path)
+                logger.info(f"Linked {install_path} -> {volume_path}")
+
     def configure(self):
         """Configure and register the runner"""
         logger.info("Configuring runner...")
@@ -278,6 +327,7 @@ class RunnerController:
 
         if result.returncode == 0:
             logger.info("Runner configured successfully")
+            self._persist_config()
         else:
             logger.error(f"Configuration failed with code {result.returncode}")
             sys.exit(result.returncode)
@@ -285,6 +335,8 @@ class RunnerController:
     def run(self):
         """Run the runner listener with auto-restart logic"""
         logger.info("Starting runner...")
+
+        self._persist_config()
 
         # Set up signal handlers
         signal.signal(signal.SIGINT, self.signal_handler)
