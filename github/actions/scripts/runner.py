@@ -4,6 +4,72 @@ GitHub Actions Self-Hosted Runner Controller
 
 This script replaces config.sh, run.sh, and run-helper.sh with a unified Python implementation.
 Designed for containerized (Docker) environments with Rocky Linux 10+.
+
+ALGORITHM:
+==========
+
+1. COMMON INITIALIZATION (all modes):
+   - Verify not running as root (unless RUNNER_ALLOW_RUNASROOT is set)
+   - Set up directory paths (RUNNER_HOME, RUNNER_ROOT)
+   - Validate Runner.Listener binary exists
+
+2. CONFIGURE MODE (./runner.py configure):
+   - Create .env file with environment variables (LANG, JAVA_HOME, ANT_HOME, etc.)
+   - Create .path file with current PATH
+   - Fetch registration token (GITHUB_TOKEN or via GITHUB_PAT API call)
+   - Execute: bin/Runner.Listener configure --unattended --token <token> --url <url> 
+              --name <name> --labels <labels> --work <work> [--runnergroup <group>]
+              [--disableupdate] (if RUNNER_DISABLE_UPDATE is set)
+
+3. RUN MODE (./runner.py run or ./runner.py):
+   - Set up signal handlers (SIGINT, SIGTERM) for graceful shutdown
+   - Main run loop:
+     a. Execute: bin/Runner.Listener run [arguments]
+     b. Handle return codes:
+        - 0: Normal exit, stop service
+        - 1: Terminated error, stop service
+        - 2: Retryable error, sleep 5 seconds and restart
+        - 3/4: Update requested, exit (container should be rebuilt with new runner)
+        - 5: Session conflict, stop service
+        - Other: Unknown error, stop service
+     c. If interrupted by signal, exit gracefully
+     d. Loop until exit condition met
+
+4. REMOVE/DELETE MODE (./runner.py remove or ./runner.py delete):
+   - Fetch removal token (GITHUB_TOKEN or via GITHUB_PAT API call)
+   - Execute: bin/Runner.Listener remove --token <token>
+
+USAGE:
+======
+  ./runner.py configure  - Configure and register runner
+  ./runner.py run        - Run the runner listener (default)
+  ./runner.py            - Same as 'run'
+  ./runner.py remove     - Remove/unregister runner
+  ./runner.py delete     - Alias for 'remove'
+
+ENVIRONMENT VARIABLES:
+======================
+  RUNNER_HOME              - Runner home directory (default: /home/runner)
+  RUNNER_ROOT              - Runner installation root (default: /usr/local/runner)
+  RUNNER_ALLOW_RUNASROOT   - Allow running as root (set to any value)
+  RUNNER_DISABLE_UPDATE    - Disable runner self-updates (recommended for containers)
+  
+  # Configuration
+  GITHUB_URL               - GitHub instance URL (required)
+  GITHUB_TOKEN             - Pre-generated registration/removal token (priority 1)
+  GITHUB_PAT               - Personal Access Token for token generation (priority 2)
+  RUNNER_NAME              - Runner name (default: github-actions-runner-<hostname>)
+  RUNNER_GROUP             - Runner group (default: Default)
+  RUNNER_LABELS            - Runner labels (default: self-hosted,linux,x64)
+  RUNNER_WORKSPACE         - Working directory (default: _work)
+
+UPDATE PREVENTION:
+==================
+  For containerized runners, self-updates are prevented by:
+  1. RUNNER_DISABLE_UPDATE environment variable (adds --disableupdate flag)
+  2. Exit on update return codes (3, 4) instead of restarting
+  3. Runner version baked into Docker image
+  4. Updates handled by rebuilding container image with new runner version
 """
 
 import os
