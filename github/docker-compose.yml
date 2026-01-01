@@ -5,6 +5,7 @@ services:
       context: actions
       args:
         rocky: $RL10
+        image: docker-${DOCKER}
         RUNNER_VERSION: $GITHUB_RUNNER_TAG
         RUNNER_CHECKSUM: $GITHUB_RUNNER_SHA256
     image: "aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
