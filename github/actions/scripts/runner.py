@@ -273,8 +273,8 @@ class RunnerController:
                     else:
                         volume_path.unlink()  # Handles both files and symlinks
 
-                # Move to volume (works for both files and directories)
-                install_path.replace(volume_path)
+                # Move to volume (using shutil.move to handle cross-device move)
+                shutil.move(install_path, volume_path)
                 logger.info(f"Moved {filename} to volume")
 
         self._restore_config_links()
