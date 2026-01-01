@@ -414,6 +414,10 @@ class RunnerController:
         """Remove and unregister the runner"""
         logger.info("Removing runner...")
 
+        # IMPORTANT: Restore symlinks before removal to ensure runner can access
+        # its configuration files and communicate with GitHub API
+        self._restore_config_links()
+
         # Fetch removal token
         token = self.fetch_token("remove")
 
