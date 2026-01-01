@@ -1,5 +1,6 @@
 ARG rocky=10.1.20251126
-FROM aursu/rpmbuild:${rocky}-docker
+ARG image=docker
+FROM ghcr.io/aursu/rpmbuild:${rocky}-${image}
 
 # Replace value with the latest runner release version
 # source: https://github.com/actions/runner/releases

@@ -25,6 +25,7 @@ services:
       dockerfile: Dockerfile.docker
       args:
         rocky: $RL10
+        DOCKER_VERSION: $DOCKER
     image: "ghcr.io/aursu/rpmbuild:${RL10TAG}-docker"
   rocky10rpmbroot:
     build:
@@ -47,6 +48,14 @@ services:
         rocky: $RL10
         image: rpmb-root
     image: "aursu/rpmbuild:${RL10TAG}-build-root"
+  rocky10docker2x:
+    build:
+      context: build
+      dockerfile: Dockerfile.docker
+      args:
+        rocky: $RL10
+        DOCKER_VERSION: $DOCKER
+    image: "ghcr.io/aursu/rpmbuild:${RL10TAG}-docker-${DOCKER}"
 
 volumes:
   rpm10rocky:
