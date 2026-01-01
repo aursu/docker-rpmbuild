@@ -72,20 +72,23 @@ UPDATE PREVENTION:
   4. Updates handled by rebuilding container image with new runner version
 """
 
-import os
-import sys
-import subprocess
+import argparse
 import json
 import logging
-import time
+import os
+import shutil
 import signal
 import socket
-import shutil
+import subprocess
+import sys
+import time
+from dataclasses import dataclass, field
+from enum import IntEnum
 from pathlib import Path
 from typing import List, Optional, Any, Set
-from urllib.request import Request, urlopen
-from urllib.error import URLError, HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 
 logging.basicConfig(
     level=logging.INFO,
