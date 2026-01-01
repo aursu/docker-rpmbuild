@@ -1,8 +1,0 @@
-ARG rocky=10.1.20251126
-ARG version=2.330.0
-FROM aursu/rockylinux:${rocky}-actions-runner-${version}
-
-VOLUME $RUNNER_HOME
-
-# runner.py run (default mode) handles signal trapping and auto-restart
-CMD $RUNNER_ROOT/runner.py
