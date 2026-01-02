@@ -14,7 +14,7 @@ services:
   # Usage: docker compose run --rm githubrunnerconfig
   githubrunnerconfig:
     image: "aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
-    command: /usr/local/runner/runner.py configure --replace
+    command: /usr/local/runner/runner.py configure
     env_file:
       - secrets/github.env
     volumes:
