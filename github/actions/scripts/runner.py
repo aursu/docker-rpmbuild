@@ -439,24 +439,21 @@ class RunnerController:
 
 def main():
     """Main entry point"""
-    # Determine mode from command line
-    mode: str = "run"  # default
-    if len(sys.argv) > 1:
-        arg = sys.argv[1].lower()
-        if arg in ("configure", "config"):
-            mode = "configure"
-        elif arg in ("remove", "delete", "unregister"):
-            mode = "remove"
-        elif arg in ("run", "start"):
-            mode = "run"
-        elif arg in ("-h", "--help", "help"):
-            # Use raw string for docstring
-            print(__doc__)
-            sys.exit(0)
-        else:
-            print(f"Unknown command: {sys.argv[1]}")
-            print("Usage: runner.py [configure|run|remove|delete]")
-            sys.exit(1)
+
+    # Use argparse for better CLI handling
+    parser = argparse.ArgumentParser(description="GitHub Actions Runner Controller")
+    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+
+    # Subcommands
+    subparsers.add_parser("configure", help="Configure the runner")
+    subparsers.add_parser("run", help="Start the runner listener")
+    subparsers.add_parser("remove", help="Unregister the runner")
+    subparsers.add_parser("delete", help="Alias for remove")
+
+    args = parser.parse_args()
+
+    # Default to 'run' if no args provided
+    command = args.command or "run"
 
     # Initialize controller
     controller = RunnerController()
@@ -465,11 +462,11 @@ def main():
     controller.check_not_root()
 
     # Execute mode
-    if mode == "configure":
+    if command == "configure":
         controller.configure()
-    elif mode == "run":
+    elif command == "run":
         controller.run()
-    elif mode == "remove":
+    elif command == "remove":
         controller.remove()
 
 if __name__ == "__main__":
