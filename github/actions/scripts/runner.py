@@ -135,7 +135,7 @@ class Config:
         if not self.github_token and not self.github_pat:
             raise RunnerError("Either GITHUB_TOKEN or GITHUB_PAT must be provided.")
 
-class RunnerController:
+class RunnerService:
     """Unified GitHub Actions Runner Controller"""
 
     # Environment variables to capture in .env file (from env.sh)
@@ -498,18 +498,18 @@ def main():
         config.validate()
 
         # Initialize controller
-        controller = RunnerController()
+        service = RunnerService()
 
         # Common checks
-        controller.check_not_root()
+        service.check_not_root()
 
-        # Execute mode
+        # Execute
         if command == "configure":
-            controller.configure()
+            service.configure()
         elif command == "run":
-            controller.run()
-        elif command == "remove":
-            controller.remove()
+            service.run()
+        elif command in ("remove", "delete"):
+            service.remove()
     except RunnerError as e:
         logger.error(str(e))
         sys.exit(1)
