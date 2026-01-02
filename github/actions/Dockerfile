@@ -22,7 +22,6 @@ ARG HOOKS_DISTRO="actions-runner-hooks-k8s-${RUNNER_CONTAINER_HOOKS_VERSION}.zip
 ARG HOOKS_URL="https://github.com/actions/runner-container-hooks/releases/download/v${RUNNER_CONTAINER_HOOKS_VERSION}/${HOOKS_DISTRO}"
 
 ARG dest=/usr/local/runner
-
 ARG user=runner
 ARG group=runner
 ARG home=/home/${user}
@@ -33,20 +32,16 @@ ARG gid=1000
 ENV RUNNER_HOME=$home
 ENV RUNNER_ROOT=$dest
 
+# Force python unbuffered output for real-time logging
+ENV PYTHONUNBUFFERED=1
 ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 ENV RUNNER_DISABLE_UPDATE=1
 ENV ACTIONS_RUNNER_CONTAINER_HOOKS=$RUNNER_ROOT/k8s
 
 USER root
 
-# Use ARG (build-time) for COPY since path is fixed at build time
-COPY --chmod=755 scripts/check.sh $dest/check.sh
-COPY --chmod=755 scripts/runner.py $dest/runner.py
-
-RUN groupadd -g $gid $group \
-  && useradd -d $home -u $uid -g $gid -m -s /bin/bash $user \
-  && usermod -aG docker $user
-
+# Install dependencies
+# Note: Ensure python3.12 is available in your Rocky repo, otherwise use python3.11 or platform default
 RUN dnf -y install --enablerepo=crb \
         libicu \
         lttng-ust \
@@ -55,12 +50,23 @@ RUN dnf -y install --enablerepo=crb \
         python3.12 \
     && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
+# Setup User and Groups
+RUN groupadd -g $gid $group \
+  && useradd -d $home -u $uid -g $gid -m -s /bin/bash $user \
+  && usermod -aG docker $user
+
+# Prepare Destination
 WORKDIR $dest
+
+# Use ARG (build-time) for COPY since path is fixed at build time
+COPY --chmod=755 scripts/check.sh $dest/check.sh
+COPY --chmod=755 scripts/runner.py $dest/runner.py
 
 RUN chown -R $user:$group $dest
 
 USER $user
 
+# Install Runner Binary
 RUN set -ex \
     && curl -O -L $RELEASE_URL \
     && echo "${RUNNER_CHECKSUM} ${DISTRO}" | sha256sum -c \
@@ -68,6 +74,7 @@ RUN set -ex \
     && rm -f $DISTRO \
     && ./check.sh
 
+# Install K8s Hooks
 RUN set -ex \
     && curl -O -L $HOOKS_URL \
     && echo "${RUNNER_CONTAINER_HOOKS_CHECKSUM} ${HOOKS_DISTRO}" | sha256sum -c \
@@ -75,4 +82,6 @@ RUN set -ex \
     && unzip $HOOKS_DISTRO -d k8s \
     && rm -f $HOOKS_DISTRO
 
+# Final Setup
 WORKDIR $home
+CMD ["/usr/local/runner/runner.py", "run"]
