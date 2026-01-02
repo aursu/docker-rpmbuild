@@ -342,7 +342,7 @@ class RunnerService:
             "--url", str(self.config.github_url),
             "--name", self.config.runner_name,
             "--labels", self.config.runner_labels,
-            "--work", self.config.runner_workspace,
+            "--work", self.config.runner_work_dir,
         ]
 
         # Add optional runner group
