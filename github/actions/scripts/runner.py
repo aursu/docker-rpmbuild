@@ -73,10 +73,12 @@ UPDATE PREVENTION:
 """
 
 import argparse
+import functools
 import json
 import logging
 import os
 import platform
+import random
 import shutil
 import signal
 import socket
@@ -115,7 +117,6 @@ class RunnerError(Exception):
     pass
 
 # --- Configuration ---
-
 @dataclass
 class Config:
     """
@@ -128,6 +129,9 @@ class Config:
     github_url: Optional[str] = os.getenv("GITHUB_URL")
     github_token: Optional[str] = os.getenv("GITHUB_TOKEN")
     github_pat: Optional[str] = os.getenv("GITHUB_PAT")
+
+    api_retries: int = field(default_factory=lambda: int(os.getenv("GITHUB_API_RETRIES", "3")))
+    api_backoff: float = field(default_factory=lambda: float(os.getenv("GITHUB_API_BACKOFF", "1.5")))
 
     runner_name: str = os.getenv("RUNNER_NAME") or f"github-actions-runner-{socket.gethostname()}"
     runner_group: str = os.getenv("RUNNER_GROUP", "Default")
@@ -244,6 +248,55 @@ class FileSystemManager:
             else:
                 logger.debug(f"Config file {filename} not found on volume, skipping symlink")
 
+class RetryPolicy:
+    """
+    Class-based decorator for network resilience.
+    It inspects the instance ('self') to find configuration.
+    """
+
+    def __init__(self, exceptions=(URLError, HTTPError)):
+        self.exceptions = exceptions
+
+    def __call__(self, func):
+        @functools.wraps(func)
+        def wrapper(obj, *args, **kwargs):
+            # 'obj' is 'self' from GitHubClient
+            # We extract config from the object whose method we're decorating
+
+            config = getattr(obj, 'config', None)
+
+            # If the object has config - use settings from there
+            # Otherwise use safe defaults (fallback)
+            if config and hasattr(config, 'api_retries'):
+                max_retries = config.api_retries
+                backoff_factor = config.api_backoff
+            else:
+                max_retries = 3
+                backoff_factor = 1.5
+
+            delay = 1.0
+            for attempt in range(max_retries + 1):
+                try:
+                    # Call the instance method: func(self, *args)
+                    return func(obj, *args, **kwargs)
+                except self.exceptions as e:
+                    # 4xx Errors - Fail fast (client errors shouldn't be retried)
+                    if isinstance(e, HTTPError) and 400 <= e.code < 500:
+                        raise
+
+                    if attempt == max_retries:
+                        logger.error(f"Operation failed after {max_retries} retries: {e}")
+                        raise
+
+                    # Add jitter to prevent thundering herd
+                    sleep_time = delay * (1 + random.random() * 0.1)
+                    logger.warning(f"Network error: {e}. Retrying in {sleep_time:.2f}s (Attempt {attempt + 1}/{max_retries})...")
+
+                    time.sleep(sleep_time)
+                    delay *= backoff_factor
+
+        return wrapper
+
 class GitHubClient:
     """
     Handles interaction with GitHub API to retrieve tokens.
@@ -272,6 +325,7 @@ class GitHubClient:
 
         return f"{api_base}/{scope}/actions/runners/{action}-token"
 
+    @RetryPolicy()
     def get_token(self, action: str) -> str:
         """
         Retrieves a token.
@@ -297,7 +351,7 @@ class GitHubClient:
         req.add_header("User-Agent", user_agent)
 
         try:
-            with urlopen(req) as resp:
+            with urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read().decode())
                 return data["token"]
         except HTTPError as e:
