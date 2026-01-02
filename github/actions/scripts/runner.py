@@ -76,6 +76,7 @@ import argparse
 import json
 import logging
 import os
+import platform
 import shutil
 import signal
 import socket
@@ -89,6 +90,8 @@ from typing import List, Optional, Any, Set
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
+
+__version__ = "1.0.0"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -231,53 +234,39 @@ class FileSystemManager:
             else:
                 logger.debug(f"Config file {filename} not found on volume, skipping symlink")
 
-class RunnerService:
+class GitHubClient:
     """
-    Orchestrates the runner lifecycle (Configure -> Run -> Remove).
+    Handles interaction with GitHub API to retrieve tokens.
     """
 
-    def __init__(self, config: Config, fman: FileSystemManager):
+    def __init__(self, config: Config):
         self.config = config
-        self.fman = fman
 
-        # Shutdown flag for signal handling
-        self._shutdown_requested: bool = False
-
-    def get_api_url(self, action: str = "registration") -> str:
-        """Generate GitHub API URL for token generation"""
-        if not self.config.github_url:
-            logger.error("GITHUB_URL environment variable is required")
-            sys.exit(1)
-
+    def _get_api_url(self, action: str) -> str:
         parsed = urlparse(self.config.github_url)
-        # Type hint for parts helps understand it's a list of strings
         parts: List[str] = [p for p in parsed.path.split('/') if p]
 
-        scope_path: str = ""
+        scope: str = ""
         if len(parts) == 1:
-            # Organization scope
-            scope_path = f"orgs/{parts[0]}"
+            scope = f"orgs/{parts[0]}"
         elif len(parts) >= 2:
-            # Repository scope
-            scope_path = f"repos/{parts[0]}/{parts[1]}"
+            scope = f"repos/{parts[0]}/{parts[1]}"
         else:
-            raise ValueError(f"Invalid GITHUB_URL format: {self.config.github_url}")
+            raise RunnerError(f"Invalid GITHUB_URL format: {self.config.github_url}")
 
-        # Determine API base URL
         api_base: str
         if parsed.hostname == "github.com":
             api_base = "https://api.github.com"
         else:
-            # GitHub Enterprise Server
             api_base = f"{parsed.scheme}://{parsed.netloc}/api/v3"
 
-        return f"{api_base}/{scope_path}/actions/runners/{action}-token"
+        return f"{api_base}/{scope}/actions/runners/{action}-token"
 
-    def fetch_token(self, action: str = "registration") -> str:
+    def get_token(self, action: str) -> str:
         """
-        Fetches the runner token with the following priority:
-        Priority 1: GITHUB_TOKEN (direct registration/removal token).
-        Priority 2: Generated via GITHUB_PAT (Personal Access Token).
+        Retrieves a token.
+        Priority 1: Explicit GITHUB_TOKEN env var.
+        Priority 2: Generate via API using GITHUB_PAT.
         """
         if self.config.github_token:
             logger.info(f"Using provided GITHUB_TOKEN for {action}.")
@@ -286,33 +275,42 @@ class RunnerService:
         if not self.config.github_pat:
             raise RunnerError(f"No GITHUB_TOKEN or GITHUB_PAT available for {action}.")
 
-        api_url: str = self.get_api_url(action)
-        logger.info(f"Fetching {action} token from GitHub API using GITHUB_PAT...")
+        api_url: str = self._get_api_url(action)
+        logger.info(f"Requesting {action} token via API...")
 
         req = Request(api_url, method="POST")
         req.add_header("Authorization", f"Bearer {self.config.github_pat}")
         req.add_header("Accept", "application/vnd.github+json")
         req.add_header("X-GitHub-Api-Version", "2022-11-28")
 
+        user_agent = f"RunnerController/1.0.0 (Python {platform.python_version()}; {platform.system()})"
+        req.add_header("User-Agent", user_agent)
+
         try:
             with urlopen(req) as resp:
                 data = json.loads(resp.read().decode())
-                token: str = data["token"]
-                logger.info(f"Successfully fetched {action} token")
-                return token
+                return data["token"]
         except HTTPError as e:
-            logger.error(f"GitHub API error: {e.code} - {e.reason}")
             if e.code == 401:
-                logger.error("Invalid or expired GITHUB_PAT")
+                raise RunnerError("Invalid GITHUB_PAT (401 Unauthorized).")
             elif e.code == 404:
-                logger.error("Resource not found or insufficient permissions")
-            sys.exit(1)
+                raise RunnerError("Repo/Org not found or PAT missing permissions (404).")
+            raise RunnerError(f"GitHub API Error: {e.code} {e.reason}")
         except URLError as e:
-            logger.error(f"Network error: {e.reason}")
-            sys.exit(1)
+            raise RunnerError(f"Token fetch failed: {str(e)}")
         except (KeyError, json.JSONDecodeError) as e:
-            logger.error(f"Invalid API response: {e}")
-            sys.exit(1)
+            raise RunnerError(f"Invalid API response: {str(e)}")
+
+class RunnerService:
+    """
+    Orchestrates the runner lifecycle (Configure -> Run -> Remove).
+    """
+
+    def __init__(self, config: Config, fman: FileSystemManager, gh_client: GitHubClient):
+        self.config = config
+        self.fman = fman
+        self.github = gh_client
+        self._shutdown_requested: bool = False
 
     def signal_handler(self, signum: int, frame: Any):
         """Handle shutdown signals"""
@@ -331,7 +329,7 @@ class RunnerService:
         self.fman.create_env_files()
 
         # Fetch registration token
-        token: str = self.fetch_token("registration")
+        token: str = self.github.get_token("registration")
 
         # Build command
         cmd: List[str] = [
@@ -436,7 +434,7 @@ class RunnerService:
         self.fman.restore_config_links()
 
         # Fetch removal token
-        token: str = self.fetch_token("remove")
+        token: str = self.github.get_token("remove")
 
         # Build command
         cmd: List[str] = [
@@ -481,7 +479,8 @@ def main():
         fman.check_user_permissions()
 
         # Initialize controller
-        service = RunnerService(config, fman)
+        github = GitHubClient(config)
+        service = RunnerService(config, fman, github)
 
         # Execute
         if command == "configure":
