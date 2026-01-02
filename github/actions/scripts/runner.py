@@ -136,7 +136,9 @@ class Config:
             raise RunnerError("Either GITHUB_TOKEN or GITHUB_PAT must be provided.")
 
 class RunnerService:
-    """Unified GitHub Actions Runner Controller"""
+    """
+    Orchestrates the runner lifecycle (Configure -> Run -> Remove).
+    """
 
     # Environment variables to capture in .env file (from env.sh)
     ENV_VARS: List[str] = [
@@ -160,40 +162,22 @@ class RunnerService:
         '.telemetry',
     ]
 
-    def __init__(self):
-        self.runner_home: Path = Path(os.getenv("RUNNER_HOME", "/home/runner"))
-        self.runner_root: Path = Path(os.getenv("RUNNER_ROOT", "/usr/local/runner"))
-
-        self.listener_bin: Path = self.runner_root / "bin" / "Runner.Listener"
-
-        # GitHub configuration
-        self.github_url: Optional[str] = os.getenv("GITHUB_URL")
-        self.github_token: Optional[str] = os.getenv("GITHUB_TOKEN")
-        self.github_pat: Optional[str] = os.getenv("GITHUB_PAT")
-
-        # Runner configuration
-        self.runner_name: str = os.getenv("RUNNER_NAME") or f"github-actions-runner-{socket.gethostname()}"
-        self.runner_group: str = os.getenv("RUNNER_GROUP", "Default")
-        self.runner_labels: str = os.getenv("RUNNER_LABELS", "self-hosted,linux,x64")
-        self.runner_workspace: str = os.getenv("RUNNER_WORKSPACE", "_work")
-
-        # Runtime flags
-        self.allow_root: Optional[str] = os.getenv("RUNNER_ALLOW_RUNASROOT")
-        self.disable_update: Optional[str] = os.getenv("RUNNER_DISABLE_UPDATE")
+    def __init__(self, config: Config):
+        self.config = config
 
         # Shutdown flag for signal handling
-        self.shutdown_requested: bool = False
+        self._shutdown_requested: bool = False
 
     def check_not_root(self):
         """Verify not running as root unless explicitly allowed"""
-        if os.geteuid() == 0 and not self.allow_root:
+        if os.geteuid() == 0 and not self.config.allow_root:
             logger.error("Must not run as root. Set RUNNER_ALLOW_RUNASROOT to override.")
             sys.exit(1)
 
     def create_env_files(self):
         """Create .env and .path files (from env.sh)"""
-        env_file: Path = self.runner_home / ".env"
-        path_file: Path = self.runner_home / ".path"
+        env_file: Path = self.config.runner_home / ".env"
+        path_file: Path = self.config.runner_home / ".path"
 
         # Read existing .env content if it exists
         existing_vars: Set[str] = set()
@@ -221,11 +205,11 @@ class RunnerService:
 
     def get_api_url(self, action: str = "registration") -> str:
         """Generate GitHub API URL for token generation"""
-        if not self.github_url:
+        if not self.config.github_url:
             logger.error("GITHUB_URL environment variable is required")
             sys.exit(1)
 
-        parsed = urlparse(self.github_url)
+        parsed = urlparse(self.config.github_url)
         # Type hint for parts helps understand it's a list of strings
         parts: List[str] = [p for p in parsed.path.split('/') if p]
 
@@ -237,7 +221,7 @@ class RunnerService:
             # Repository scope
             scope_path = f"repos/{parts[0]}/{parts[1]}"
         else:
-            raise ValueError(f"Invalid GITHUB_URL format: {self.github_url}")
+            raise ValueError(f"Invalid GITHUB_URL format: {self.config.github_url}")
 
         # Determine API base URL
         api_base: str
@@ -255,19 +239,18 @@ class RunnerService:
         Priority 1: GITHUB_TOKEN (direct registration/removal token).
         Priority 2: Generated via GITHUB_PAT (Personal Access Token).
         """
-        if self.github_token:
-            logger.info(f"Using pre-provisioned GITHUB_TOKEN for {action}, skipping API call")
-            return self.github_token
+        if self.config.github_token:
+            logger.info(f"Using provided GITHUB_TOKEN for {action}.")
+            return self.config.github_token
 
-        if not self.github_pat:
-            logger.error(f"Error: Neither GITHUB_TOKEN nor GITHUB_PAT provided for {action}.")
-            sys.exit(1)
+        if not self.config.github_pat:
+            raise RunnerError(f"No GITHUB_TOKEN or GITHUB_PAT available for {action}.")
 
         api_url: str = self.get_api_url(action)
         logger.info(f"Fetching {action} token from GitHub API using GITHUB_PAT...")
 
         req = Request(api_url, method="POST")
-        req.add_header("Authorization", f"Bearer {self.github_pat}")
+        req.add_header("Authorization", f"Bearer {self.config.github_pat}")
         req.add_header("Accept", "application/vnd.github+json")
         req.add_header("X-GitHub-Api-Version", "2022-11-28")
 
@@ -298,15 +281,15 @@ class RunnerService:
         except ValueError:
             sig_name = str(signum)
         logger.info(f"Received {sig_name}, shutting down gracefully...")
-        self.shutdown_requested = True
+        self._shutdown_requested = True
 
     def _persist_config(self):
         """
         Move newly created runner configuration files to volume-mounted storage.
         """
         for filename in self.CONFIG_FILES:
-            install_path: Path = self.runner_root / filename
-            volume_path: Path = self.runner_home / filename
+            install_path: Path = self.config.runner_root / filename
+            volume_path: Path = self.config.runner_home / filename
 
             # Move newly created config file/directory from install directory to volume
             if install_path.exists() and not install_path.is_symlink():
@@ -329,8 +312,8 @@ class RunnerService:
         Restore symlinks from installation directory to volume-mounted storage.
         """
         for filename in self.CONFIG_FILES:
-            install_path: Path = self.runner_root / filename
-            volume_path: Path = self.runner_home / filename
+            install_path: Path = self.config.runner_root / filename
+            volume_path: Path = self.config.runner_home / filename
 
             # Create symlink from install directory to volume
             if volume_path.exists():
@@ -355,33 +338,33 @@ class RunnerService:
 
         # Build command
         cmd: List[str] = [
-            str(self.listener_bin),
+            str(self.config.listener_bin),
             "configure",
             "--unattended",
             "--token", token,
-            "--url", str(self.github_url),
-            "--name", self.runner_name,
-            "--labels", self.runner_labels,
-            "--work", self.runner_workspace,
+            "--url", str(self.config.github_url),
+            "--name", self.config.runner_name,
+            "--labels", self.config.runner_labels,
+            "--work", self.config.runner_workspace,
         ]
 
         # Add optional runner group
-        if self.runner_group:
-            cmd.extend(["--runnergroup", self.runner_group])
+        if self.config.runner_group:
+            cmd.extend(["--runnergroup", self.config.runner_group])
 
         # Add replace flag to allow re-registration
         cmd.append("--replace")
 
         # Disable self-updates (recommended for containerized runners)
-        if self.disable_update:
+        if self.config.disable_update:
             cmd.append("--disableupdate")
             logger.info("Self-updates disabled")
 
-        logger.info(f"Configuring runner: {self.runner_name}")
-        logger.info(f"Labels: {self.runner_labels}")
+        logger.info(f"Configuring runner: {self.config.runner_name}")
+        logger.info(f"Labels: {self.config.runner_labels}")
 
         # Execute
-        result = subprocess.run(cmd, cwd=self.runner_home)
+        result = subprocess.run(cmd, cwd=self.config.runner_home)
 
         if result.returncode == 0:
             logger.info("Runner configured successfully")
@@ -402,13 +385,13 @@ class RunnerService:
         signal.signal(signal.SIGTERM, self.signal_handler)
 
         # Main run loop
-        while not self.shutdown_requested:
+        while not self._shutdown_requested:
             logger.info("Starting Runner.Listener...")
 
-            cmd: List[str] = [str(self.listener_bin), "run"]
+            cmd: List[str] = [str(self.config.listener_bin), "run"]
 
             # Run the listener
-            result = subprocess.run(cmd, cwd=self.runner_home)
+            result = subprocess.run(cmd, cwd=self.config.runner_home)
             return_code: int = result.returncode
 
             logger.info(f"Runner.Listener exited with code {return_code}")
@@ -443,7 +426,7 @@ class RunnerService:
                 logger.warning(f"Exiting with unknown error code: {return_code}")
                 break
 
-        if self.shutdown_requested:
+        if self._shutdown_requested:
             logger.info("Shutdown completed")
         else:
             logger.info("Runner stopped")
@@ -460,13 +443,13 @@ class RunnerService:
 
         # Build command
         cmd: List[str] = [
-            str(self.listener_bin),
+            str(self.config.listener_bin),
             "remove",
             "--token", token
         ]
 
         # Execute
-        result = subprocess.run(cmd, cwd=self.runner_home)
+        result = subprocess.run(cmd, cwd=self.config.runner_home)
 
         if result.returncode == 0:
             logger.info("Runner removed successfully")
@@ -498,7 +481,7 @@ def main():
         config.validate()
 
         # Initialize controller
-        service = RunnerService()
+        service = RunnerService(config)
 
         # Common checks
         service.check_not_root()
