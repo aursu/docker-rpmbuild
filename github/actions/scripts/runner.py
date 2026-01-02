@@ -100,6 +100,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger("runner-ctl")
 
+# --- Constants & Enums ---
+class RunnerExitCode(IntEnum):
+    """Exit codes returned by the Runner.Listener binary."""
+    SUCCESS = 0
+    TERMINATED_ERROR = 1
+    RETRYABLE_ERROR = 2
+    UPDATE_REQUIRED = 3
+    EPHEMERAL_UPDATE_REQUIRED = 4
+    SESSION_CONFLICT = 5
+
 class RunnerError(Exception):
     """Base exception for runner controller errors."""
     pass
@@ -312,6 +322,13 @@ class RunnerService:
         self.github = gh_client
         self._shutdown_requested: bool = False
 
+    def _exec(self, args: List[str]) -> int:
+        """Helper to execute subprocess command."""
+        try:
+            return subprocess.run(args, cwd=self.config.runner_home).returncode
+        except FileNotFoundError:
+            raise RunnerError(f"Binary not found: {self.config.listener_bin}")
+
     def signal_handler(self, signum: int, frame: Any):
         """Handle shutdown signals"""
         try:
@@ -358,15 +375,11 @@ class RunnerService:
         logger.info(f"Configuring runner: {self.config.runner_name}")
         logger.info(f"Labels: {self.config.runner_labels}")
 
-        # Execute
-        result = subprocess.run(cmd, cwd=self.config.runner_home)
-
-        if result.returncode == 0:
-            logger.info("Runner configured successfully")
+        if (returncode := self._exec(cmd)) == 0:
+            logger.info("Runner configured successfully.")
             self.fman.persist_config()
         else:
-            logger.error(f"Configuration failed with code {result.returncode}")
-            sys.exit(result.returncode)
+            raise RunnerError(f"Configuration failed with code {returncode}")
 
     def run(self):
         """Run the runner listener with auto-restart logic"""
@@ -384,47 +397,39 @@ class RunnerService:
             logger.info("Starting Runner.Listener...")
 
             cmd: List[str] = [str(self.config.listener_bin), "run"]
+            return_code: int = self._exec(cmd)
 
-            # Run the listener
-            result = subprocess.run(cmd, cwd=self.config.runner_home)
-            return_code: int = result.returncode
+            # Map raw int to Enum for readability
+            try:
+                exit_status = RunnerExitCode(return_code)
+            except ValueError:
+                logger.warning(f"Unknown exit code: {return_code}")
+                break
 
             logger.info(f"Runner.Listener exited with code {return_code}")
 
-            # Handle return codes
-            if return_code == 0:
-                logger.info("Runner listener exit with 0 return code, stop the service, no retry needed.")
+            if exit_status == RunnerExitCode.SUCCESS:
+                logger.info("Runner exited normally.")
                 break
-
-            elif return_code == 1:
-                logger.info("Runner listener exit with terminated error, stop the service, no retry needed.")
+            elif exit_status == RunnerExitCode.TERMINATED_ERROR:
+                logger.error("Runner terminated with error.")
                 break
-
-            elif return_code == 2:
-                logger.info("Runner listener exit with retryable error, re-launch runner in 5 seconds.")
+            elif exit_status == RunnerExitCode.RETRYABLE_ERROR:
+                logger.warning("Retryable error. Restarting in 5s...")
                 time.sleep(5)
-                # Check for broken symlinks before restart
-                self.fman.persist_config()
+                self.fman.persist_config() # Re-check links
                 continue
-
-            elif return_code in (3, 4):
-                update_type = "Runner update" if return_code == 3 else "Ephemeral runner update"
-                logger.info(f"{update_type} requested, but updates are disabled in container. Exiting.")
-                logger.info("To update: rebuild Docker image with new runner version")
+            elif exit_status in (RunnerExitCode.UPDATE_REQUIRED, RunnerExitCode.EPHEMERAL_UPDATE_REQUIRED):
+                logger.info(f"Update requested (Code {return_code}). Exiting container for rebuild.")
                 break
-
-            elif return_code == 5:
-                logger.info("Runner listener exit with Session Conflict error, stop the service, no retry needed.")
+            elif exit_status == RunnerExitCode.SESSION_CONFLICT:
+                logger.error("Session conflict detected.")
                 break
-
             else:
-                logger.warning(f"Exiting with unknown error code: {return_code}")
+                logger.warning(f"Unexpected exit code: {return_code}")
                 break
 
-        if self._shutdown_requested:
-            logger.info("Shutdown completed")
-        else:
-            logger.info("Runner stopped")
+        logger.info("Runner service stopped.")
 
     def remove(self):
         """Remove and unregister the runner"""
@@ -444,13 +449,10 @@ class RunnerService:
         ]
 
         # Execute
-        result = subprocess.run(cmd, cwd=self.config.runner_home)
-
-        if result.returncode == 0:
+        if (returncode := self._exec(cmd)) == 0:
             logger.info("Runner removed successfully")
         else:
-            logger.error(f"Removal failed with code {result.returncode}")
-            sys.exit(result.returncode)
+            raise RunnerError(f"Removal failed with code {returncode}")
 
 def main():
     """Main entry point"""
