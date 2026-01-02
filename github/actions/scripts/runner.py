@@ -329,15 +329,6 @@ class RunnerService:
         except FileNotFoundError:
             raise RunnerError(f"Binary not found: {self.config.listener_bin}")
 
-    def signal_handler(self, signum: int, frame: Any):
-        """Handle shutdown signals"""
-        try:
-            sig_name = signal.Signals(signum).name
-        except ValueError:
-            sig_name = str(signum)
-        logger.info(f"Received {sig_name}, shutting down gracefully...")
-        self._shutdown_requested = True
-
     def configure(self):
         """Configure and register the runner"""
         logger.info("Configuring runner...")
@@ -350,22 +341,19 @@ class RunnerService:
 
         # Build command
         cmd: List[str] = [
-            str(self.config.listener_bin),
-            "configure",
+            str(self.config.listener_bin), "configure",
             "--unattended",
             "--token", token,
             "--url", str(self.config.github_url),
             "--name", self.config.runner_name,
             "--labels", self.config.runner_labels,
             "--work", self.config.runner_work_dir,
+            "--replace"
         ]
 
         # Add optional runner group
         if self.config.runner_group:
             cmd.extend(["--runnergroup", self.config.runner_group])
-
-        # Add replace flag to allow re-registration
-        cmd.append("--replace")
 
         # Disable self-updates (recommended for containerized runners)
         if self.config.disable_update:
@@ -389,8 +377,8 @@ class RunnerService:
         self.fman.persist_config()
 
         # Set up signal handlers
-        signal.signal(signal.SIGINT, self.signal_handler)
-        signal.signal(signal.SIGTERM, self.signal_handler)
+        signal.signal(signal.SIGINT, self._handle_signal)
+        signal.signal(signal.SIGTERM, self._handle_signal)
 
         # Main run loop
         while not self._shutdown_requested:
@@ -453,6 +441,14 @@ class RunnerService:
             logger.info("Runner removed successfully")
         else:
             raise RunnerError(f"Removal failed with code {returncode}")
+
+    def _handle_signal(self, signum: int, frame: Any):
+        try:
+            name = signal.Signals(signum).name
+        except ValueError:
+            name = str(signum)
+        logger.info(f"Received {name}. Shutting down...")
+        self._shutdown_requested = True
 
 def main():
     """Main entry point"""
