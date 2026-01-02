@@ -293,7 +293,7 @@ class GitHubClient:
         req.add_header("Accept", "application/vnd.github+json")
         req.add_header("X-GitHub-Api-Version", "2022-11-28")
 
-        user_agent = f"RunnerController/1.0.0 (Python {platform.python_version()}; {platform.system()})"
+        user_agent = f"RunnerController/{__version__} (Python {platform.python_version()}; {platform.system()})"
         req.add_header("User-Agent", user_agent)
 
         try:
