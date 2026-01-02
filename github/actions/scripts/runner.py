@@ -135,19 +135,26 @@ class Config:
         if not self.github_token and not self.github_pat:
             raise RunnerError("Either GITHUB_TOKEN or GITHUB_PAT must be provided.")
 
-class RunnerService:
+# --- Components ---
+class FileSystemManager:
     """
-    Orchestrates the runner lifecycle (Configure -> Run -> Remove).
+    Handles file operations, environment setup, and persistence logic.
     """
 
-    # Environment variables to capture in .env file (from env.sh)
     ENV_VARS: List[str] = [
-        'LANG', 'JAVA_HOME', 'ANT_HOME', 'M2_HOME',
-        'ANDROID_HOME', 'ANDROID_SDK_ROOT', 'GRADLE_HOME',
-        'NVM_BIN', 'NVM_PATH', 'LD_LIBRARY_PATH', 'PERL5LIB'
+        'LANG',
+        'JAVA_HOME',
+        'ANT_HOME',
+        'M2_HOME',
+        'ANDROID_HOME',
+        'ANDROID_SDK_ROOT',
+        'GRADLE_HOME',
+        'NVM_BIN',
+        'NVM_PATH',
+        'LD_LIBRARY_PATH',
+        'PERL5LIB'
     ]
 
-    # Runner configuration files to persist on volume
     CONFIG_FILES: List[str] = [
         '.runner',
         '.runner_migrated',
@@ -165,43 +172,76 @@ class RunnerService:
     def __init__(self, config: Config):
         self.config = config
 
-        # Shutdown flag for signal handling
-        self._shutdown_requested: bool = False
-
-    def check_not_root(self):
-        """Verify not running as root unless explicitly allowed"""
+    def check_user_permissions(self):
+        """Ensures the script is not run as root unless allowed."""
         if os.geteuid() == 0 and not self.config.allow_root:
-            logger.error("Must not run as root. Set RUNNER_ALLOW_RUNASROOT to override.")
-            sys.exit(1)
+            raise RunnerError("Must not run as root. Set RUNNER_ALLOW_RUNASROOT=1 to override.")
 
     def create_env_files(self):
-        """Create .env and .path files (from env.sh)"""
+        """Generates .env and .path files for the runner."""
         env_file: Path = self.config.runner_home / ".env"
         path_file: Path = self.config.runner_home / ".path"
 
-        # Read existing .env content if it exists
+        # 1. Handle .env
         existing_vars: Set[str] = set()
         if env_file.exists():
-            with open(env_file, 'r') as f:
-                for line in f:
-                    if '=' in line:
-                        var_name = line.split('=')[0]
-                        existing_vars.add(var_name)
+            with env_file.open('r') as f:
+                existing_vars = {line.split('=')[0] for line in f if '=' in line}
 
-        # Append new variables that don't exist
-        with open(env_file, 'a') as f:
+        with env_file.open('a') as f:
             for var_name in self.ENV_VARS:
-                if var_name not in existing_vars:
-                    value = os.getenv(var_name)
-                    if value:
-                        f.write(f"{var_name}={value}\n")
-                        logger.debug(f"Added {var_name} to .env")
+                if var_name not in existing_vars and (value := os.getenv(var_name)):
+                    f.write(f"{var_name}={value}\n")
+                    logger.debug(f"Added {var_name} to .env")
 
-        # Write PATH to .path file
-        with open(path_file, 'w') as f:
-            f.write(os.getenv("PATH", ""))
+        # 2. Handle .path
+        path_file.write_text(os.getenv("PATH", ""))
+        logger.info(f"Environment initialized: {env_file}, {path_file}")
 
-        logger.info(f"Created/updated environment files: {env_file}, {path_file}")
+    def persist_config(self):
+        """Moves configuration files from ephemeral install dir to persistent volume."""
+        for filename in self.CONFIG_FILES:
+            install_path: Path = self.config.runner_root / filename
+            volume_path: Path = self.config.runner_home / filename
+
+            if install_path.exists() and not install_path.is_symlink():
+                if volume_path.exists():
+                    if volume_path.is_dir():
+                        shutil.rmtree(volume_path)
+                    else:
+                        volume_path.unlink()
+
+                shutil.move(str(install_path), str(volume_path))
+                logger.debug(f"Persisted {filename} to volume.")
+
+        self.restore_config_links()
+
+    def restore_config_links(self):
+        """Creates symlinks from install dir to persistent volume."""
+        for filename in self.CONFIG_FILES:
+            install_path: Path = self.config.runner_root / filename
+            volume_path: Path = self.config.runner_home / filename
+
+            if volume_path.exists():
+                if install_path.exists() or install_path.is_symlink():
+                    install_path.unlink(missing_ok=True)
+
+                install_path.symlink_to(volume_path)
+                logger.info(f"Linked {install_path} -> {volume_path}")
+            else:
+                logger.debug(f"Config file {filename} not found on volume, skipping symlink")
+
+class RunnerService:
+    """
+    Orchestrates the runner lifecycle (Configure -> Run -> Remove).
+    """
+
+    def __init__(self, config: Config, fman: FileSystemManager):
+        self.config = config
+        self.fman = fman
+
+        # Shutdown flag for signal handling
+        self._shutdown_requested: bool = False
 
     def get_api_url(self, action: str = "registration") -> str:
         """Generate GitHub API URL for token generation"""
@@ -283,55 +323,12 @@ class RunnerService:
         logger.info(f"Received {sig_name}, shutting down gracefully...")
         self._shutdown_requested = True
 
-    def _persist_config(self):
-        """
-        Move newly created runner configuration files to volume-mounted storage.
-        """
-        for filename in self.CONFIG_FILES:
-            install_path: Path = self.config.runner_root / filename
-            volume_path: Path = self.config.runner_home / filename
-
-            # Move newly created config file/directory from install directory to volume
-            if install_path.exists() and not install_path.is_symlink():
-                logger.info(f"Persisting {filename} to volume...")
-                # Remove existing file/directory on volume if present
-                if volume_path.exists():
-                    if volume_path.is_dir():
-                        shutil.rmtree(volume_path)
-                    else:
-                        volume_path.unlink()  # Handles both files and symlinks
-
-                # Move to volume
-                shutil.move(str(install_path), str(volume_path))
-                logger.info(f"Moved {filename} to volume")
-
-        self._restore_config_links()
-
-    def _restore_config_links(self):
-        """
-        Restore symlinks from installation directory to volume-mounted storage.
-        """
-        for filename in self.CONFIG_FILES:
-            install_path: Path = self.config.runner_root / filename
-            volume_path: Path = self.config.runner_home / filename
-
-            # Create symlink from install directory to volume
-            if volume_path.exists():
-                # Remove existing file or symlink at install location
-                if install_path.exists() or install_path.is_symlink():
-                    install_path.unlink(missing_ok=True)
-
-                install_path.symlink_to(volume_path)
-                logger.info(f"Linked {install_path} -> {volume_path}")
-            else:
-                logger.debug(f"Config file {filename} not found on volume, skipping symlink")
-
     def configure(self):
         """Configure and register the runner"""
         logger.info("Configuring runner...")
 
         # Create environment files
-        self.create_env_files()
+        self.fman.create_env_files()
 
         # Fetch registration token
         token: str = self.fetch_token("registration")
@@ -368,7 +365,7 @@ class RunnerService:
 
         if result.returncode == 0:
             logger.info("Runner configured successfully")
-            self._persist_config()
+            self.fman.persist_config()
         else:
             logger.error(f"Configuration failed with code {result.returncode}")
             sys.exit(result.returncode)
@@ -378,7 +375,7 @@ class RunnerService:
         logger.info("Starting runner...")
 
         # Persist any orphaned configs and restore symlinks before starting
-        self._persist_config()
+        self.fman.persist_config()
 
         # Set up signal handlers
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -409,7 +406,7 @@ class RunnerService:
                 logger.info("Runner listener exit with retryable error, re-launch runner in 5 seconds.")
                 time.sleep(5)
                 # Check for broken symlinks before restart
-                self._persist_config()
+                self.fman.persist_config()
                 continue
 
             elif return_code in (3, 4):
@@ -436,7 +433,7 @@ class RunnerService:
         logger.info("Removing runner...")
 
         # IMPORTANT: Restore symlinks before removal
-        self._restore_config_links()
+        self.fman.restore_config_links()
 
         # Fetch removal token
         token: str = self.fetch_token("remove")
@@ -480,11 +477,11 @@ def main():
         config = Config()
         config.validate()
 
-        # Initialize controller
-        service = RunnerService(config)
+        fman = FileSystemManager(config)
+        fman.check_user_permissions()
 
-        # Common checks
-        service.check_not_root()
+        # Initialize controller
+        service = RunnerService(config, fman)
 
         # Execute
         if command == "configure":
