@@ -97,6 +97,43 @@ logging.basicConfig(
 )
 logger = logging.getLogger("runner-ctl")
 
+class RunnerError(Exception):
+    """Base exception for runner controller errors."""
+    pass
+
+# --- Configuration ---
+
+@dataclass
+class Config:
+    """
+    Holds configuration derived from environment variables.
+    Responsible for validating inputs and providing paths.
+    """
+    runner_home: Path = field(default_factory=lambda: Path(os.getenv("RUNNER_HOME", "/home/runner")))
+    runner_root: Path = field(default_factory=lambda: Path(os.getenv("RUNNER_ROOT", "/usr/local/runner")))
+
+    github_url: Optional[str] = os.getenv("GITHUB_URL")
+    github_token: Optional[str] = os.getenv("GITHUB_TOKEN")
+    github_pat: Optional[str] = os.getenv("GITHUB_PAT")
+
+    runner_name: str = os.getenv("RUNNER_NAME") or f"github-actions-runner-{socket.gethostname()}"
+    runner_group: str = os.getenv("RUNNER_GROUP", "Default")
+    runner_labels: str = os.getenv("RUNNER_LABELS", "self-hosted,linux,x64")
+    runner_work_dir: str = os.getenv("RUNNER_WORKSPACE", "_work")
+
+    allow_root: bool = bool(os.getenv("RUNNER_ALLOW_RUNASROOT"))
+    disable_update: bool = bool(os.getenv("RUNNER_DISABLE_UPDATE"))
+
+    @property
+    def listener_bin(self) -> Path:
+        return self.runner_root / "bin" / "Runner.Listener"
+
+    def validate(self):
+        """Validates critical configuration presence."""
+        if not self.github_url:
+            raise RunnerError("GITHUB_URL environment variable is required.")
+        if not self.github_token and not self.github_pat:
+            raise RunnerError("Either GITHUB_TOKEN or GITHUB_PAT must be provided.")
 
 class RunnerController:
     """Unified GitHub Actions Runner Controller"""
@@ -455,19 +492,33 @@ def main():
     # Default to 'run' if no args provided
     command = args.command or "run"
 
-    # Initialize controller
-    controller = RunnerController()
+    try:
+        # Initialize Dependency Injection
+        config = Config()
+        config.validate()
 
-    # Common checks
-    controller.check_not_root()
+        # Initialize controller
+        controller = RunnerController()
 
-    # Execute mode
-    if command == "configure":
-        controller.configure()
-    elif command == "run":
-        controller.run()
-    elif command == "remove":
-        controller.remove()
+        # Common checks
+        controller.check_not_root()
+
+        # Execute mode
+        if command == "configure":
+            controller.configure()
+        elif command == "run":
+            controller.run()
+        elif command == "remove":
+            controller.remove()
+    except RunnerError as e:
+        logger.error(str(e))
+        sys.exit(1)
+    except KeyboardInterrupt:
+        logger.info("Interrupted by user.")
+        sys.exit(0)
+    except Exception:
+        logger.exception("Unexpected error occurred.")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
