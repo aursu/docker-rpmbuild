@@ -126,12 +126,12 @@ class Config:
     runner_home: Path = field(default_factory=lambda: Path(os.getenv("RUNNER_HOME", "/home/runner")))
     runner_root: Path = field(default_factory=lambda: Path(os.getenv("RUNNER_ROOT", "/usr/local/runner")))
 
-    github_url: Optional[str] = os.getenv("GITHUB_URL")
-    github_token: Optional[str] = os.getenv("GITHUB_TOKEN")
-    github_pat: Optional[str] = os.getenv("GITHUB_PAT")
+    github_url: Optional[str] = field(default_factory=lambda: os.getenv("GITHUB_URL"))
+    github_token: Optional[str] = field(default_factory=lambda: os.getenv("GITHUB_TOKEN"))
+    github_pat: Optional[str] = field(default_factory=lambda: os.getenv("GITHUB_PAT"))
 
-    api_retries: int = field(default_factory=lambda: int(os.getenv("GITHUB_API_RETRIES", "3")))
-    api_backoff: float = field(default_factory=lambda: float(os.getenv("GITHUB_API_BACKOFF", "1.5")))
+    api_retries: int = int(os.getenv("GITHUB_API_RETRIES", "3"))
+    api_backoff: float = float(os.getenv("GITHUB_API_BACKOFF", "1.5"))
 
     runner_name: str = os.getenv("RUNNER_NAME") or f"github-actions-runner-{socket.gethostname()}"
     runner_group: str = os.getenv("RUNNER_GROUP", "Default")
@@ -275,25 +275,34 @@ class RetryPolicy:
                 backoff_factor = 1.5
 
             delay = 1.0
+            last_exception = None
+
             for attempt in range(max_retries + 1):
                 try:
                     # Call the instance method: func(self, *args)
                     return func(obj, *args, **kwargs)
                 except self.exceptions as e:
+                    last_exception = e
+
                     # 4xx Errors - Fail fast (client errors shouldn't be retried)
                     if isinstance(e, HTTPError) and 400 <= e.code < 500:
-                        raise
+                        raise e
 
-                    if attempt == max_retries:
-                        logger.error(f"Operation failed after {max_retries} retries: {e}")
-                        raise
+                    if attempt < max_retries:
+                        # Add jitter to prevent thundering herd
+                        sleep_time = delay * (1 + random.random() * 0.1)
+                        logger.warning(f"Network error: {e}. Retrying in {sleep_time:.2f}s (Attempt {attempt + 1}/{max_retries})...")
 
-                    # Add jitter to prevent thundering herd
-                    sleep_time = delay * (1 + random.random() * 0.1)
-                    logger.warning(f"Network error: {e}. Retrying in {sleep_time:.2f}s (Attempt {attempt + 1}/{max_retries})...")
+                        time.sleep(sleep_time)
+                        delay *= backoff_factor
 
-                    time.sleep(sleep_time)
-                    delay *= backoff_factor
+            # Reaching here means all retry attempts have been exhausted without success
+            if last_exception:
+                logger.error(f"Operation failed after {max_retries} retries: {last_exception}")
+                raise last_exception
+
+            # Safeguard for edge cases (should not occur if max_retries >= 0)
+            raise RunnerError("Operation failed with unknown error.")
 
         return wrapper
 
@@ -325,7 +334,13 @@ class GitHubClient:
 
         return f"{api_base}/{scope}/actions/runners/{action}-token"
 
+    # Helper method for network operations only.
+    # The decorator intercepts raw URLError/HTTPError exceptions and performs retry logic.
     @RetryPolicy()
+    def _send_request(self, req: Request) -> bytes:
+        with urlopen(req, timeout=30) as resp:
+            return resp.read()
+
     def get_token(self, action: str) -> str:
         """
         Retrieves a token.
@@ -351,9 +366,10 @@ class GitHubClient:
         req.add_header("User-Agent", user_agent)
 
         try:
-            with urlopen(req, timeout=30) as resp:
-                data = json.loads(resp.read().decode())
-                return data["token"]
+            raw_response = self._send_request(req)
+
+            data = json.loads(raw_response.decode())
+            return data["token"]
         except HTTPError as e:
             if e.code == 401:
                 raise RunnerError("Invalid GITHUB_PAT (401 Unauthorized).")
