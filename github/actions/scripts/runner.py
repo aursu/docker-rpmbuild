@@ -430,25 +430,39 @@ class RunnerService:
         self.github = gh_client
         self._shutdown_requested: bool = False
 
-    def _exec(self, args: List[str], timeout: Optional[int] = None) -> int:
+    def _exec(self, args: List[str], timeout: Optional[int] = None, capture: bool = False) -> int:
         """
         Helper to execute subprocess command.
         
         Args:
             args: Command arguments as list.
             timeout: Max execution time in seconds (None for infinite).
+            capture: If True, captures stdout/stderr to raise detailed errors.
+                     If False, streams output directly to console (default).
         """
         try:
             # capture_output=False ensures logs are streamed to container stdout
             result = subprocess.run(
                 args,
                 cwd=self.config.runner_home,
-                timeout=timeout  # <--- Apply timeout here
+                timeout=timeout,  # <--- Apply timeout here
+                capture_output=capture,
+                text=True if capture else False  # Decode bytes to string only if capturing
             )
+
+            # Logic for Captured mode (Configure/Remove)
+            if capture and result.returncode != 0:
+                # Extract the last meaningful error line for clarity
+                err_msg = result.stderr.strip() if result.stderr else "Unknown error"
+                # Raise immediately with the actual error text
+                raise RunnerError(f"Command failed (Code {result.returncode}):\n{err_msg}")
+
             return result.returncode
 
-        except subprocess.TimeoutExpired:
-            logger.error(f"Command timed out after {timeout}s: {' '.join(args)}")
+        except subprocess.TimeoutExpired as e:
+            # If we were capturing, the partial stderr is in e.stderr
+            stderr_info = f"\nOutput: {e.stderr.decode()}" if capture and e.stderr else ""
+            logger.error(f"Command timed out after {timeout}s: {' '.join(args)}{stderr_info}")
             return RunnerExitCode.TERMINATED_ERROR
 
         except FileNotFoundError:
