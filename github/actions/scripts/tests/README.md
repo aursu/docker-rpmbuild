@@ -41,6 +41,22 @@ Comprehensive unit tests for the RetryPolicy decorator:
 - Custom configuration support (retries, backoff factor)
 - Default fallback behavior when config is not provided
 
+### TestSignalHandler
+Unit tests for the SignalHandler context manager (in test_signal_handler.py):
+- Context manager lifecycle (enter/exit behavior)
+- Signal handler installation and restoration
+- SIGINT and SIGTERM signal handling with shutdown flag management
+- Multiple signal handling scenarios
+- Unknown signal number graceful handling
+- Nested context manager behavior
+- Exception safety (handlers restored even on errors)
+- Shutdown flag persistence after context exit
+- Real signal delivery testing
+
+### TestSignalHandlerIntegration
+Integration test for SignalHandler in realistic usage patterns (in test_signal_handler.py):
+- Typical run loop pattern with signal interruption and proper shutdown flag checking
+
 ## Test Implementation Details
 
 All tests use `unittest.mock` to isolate functionality and prevent actual network calls. The RetryPolicy tests use a `ClientStub` pattern to test the decorator in isolation from GitHubClient business logic.
