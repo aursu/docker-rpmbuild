@@ -102,6 +102,40 @@ logging.basicConfig(
 )
 logger = logging.getLogger("runner-ctl")
 
+class SignalHandler:
+    """
+    Context manager for handling system signals (SIGINT, SIGTERM).
+    Restores original handlers upon exit.
+    """
+    def __init__(self):
+        self.shutdown_requested = False
+        self._original_sigint = None
+        self._original_sigterm = None
+
+    def __enter__(self):
+        # Save original signal handlers for restoration on exit
+        self._original_sigint = signal.getsignal(signal.SIGINT)
+        self._original_sigterm = signal.getsignal(signal.SIGTERM)
+
+        # Install custom signal handlers
+        signal.signal(signal.SIGINT, self._handler)
+        signal.signal(signal.SIGTERM, self._handler)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # Restore original signal handlers
+        signal.signal(signal.SIGINT, self._original_sigint)
+        signal.signal(signal.SIGTERM, self._original_sigterm)
+
+    def _handler(self, signum: int, frame: Any):
+        try:
+            name = signal.Signals(signum).name
+        except ValueError:
+            name = str(signum)
+        logger.info(f"Received signal {name}. Shutting down...")
+
+        self.shutdown_requested = True
+
 # --- Constants & Enums ---
 class RunnerExitCode(IntEnum):
     """Exit codes returned by the Runner.Listener binary."""
@@ -199,7 +233,7 @@ class FileSystemManager:
         env_file: Path = self.config.runner_home / ".env"
         path_file: Path = self.config.runner_home / ".path"
 
-        # 1. Handle .env
+        # Generate .env file with environment variables
         existing_vars: Set[str] = set()
         if env_file.exists():
             with env_file.open('r') as f:
@@ -211,7 +245,7 @@ class FileSystemManager:
                     f.write(f"{var_name}={value}\n")
                     logger.debug(f"Added {var_name} to .env")
 
-        # 2. Handle .path
+        # Generate .path file with current PATH
         path_file.write_text(os.getenv("PATH", ""))
         logger.info(f"Environment initialized: {env_file}, {path_file}")
 
@@ -260,13 +294,12 @@ class RetryPolicy:
     def __call__(self, func):
         @functools.wraps(func)
         def wrapper(obj, *args, **kwargs):
-            # 'obj' is 'self' from GitHubClient
-            # We extract config from the object whose method we're decorating
+            # Extract configuration from the decorated method's instance
+            # The 'obj' parameter represents 'self' from the instance method
 
             config = getattr(obj, 'config', None)
 
-            # If the object has config - use settings from there
-            # Otherwise use safe defaults (fallback)
+            # Use instance configuration if available, otherwise apply default values
             if config and hasattr(config, 'api_retries'):
                 max_retries = config.api_retries
                 backoff_factor = config.api_backoff
@@ -284,12 +317,12 @@ class RetryPolicy:
                 except self.exceptions as e:
                     last_exception = e
 
-                    # 4xx Errors - Fail fast (client errors shouldn't be retried)
+                    # Fail fast on 4xx client errors (do not retry)
                     if isinstance(e, HTTPError) and 400 <= e.code < 500:
                         raise e
 
                     if attempt < max_retries:
-                        # Add jitter to prevent thundering herd
+                        # Apply jitter to prevent thundering herd problem
                         sleep_time = delay * (1 + random.random() * 0.1)
                         logger.warning(f"Network error: {e}. Retrying in {sleep_time:.2f}s (Attempt {attempt + 1}/{max_retries})...")
 
@@ -334,8 +367,8 @@ class GitHubClient:
 
         return f"{api_base}/{scope}/actions/runners/{action}-token"
 
-    # Helper method for network operations only.
-    # The decorator intercepts raw URLError/HTTPError exceptions and performs retry logic.
+    # Network operation helper method decorated with retry logic
+    # The RetryPolicy decorator intercepts URLError/HTTPError exceptions and performs automatic retries
     @RetryPolicy()
     def _send_request(self, req: Request) -> bytes:
         with urlopen(req, timeout=30) as resp:
@@ -343,9 +376,9 @@ class GitHubClient:
 
     def get_token(self, action: str) -> str:
         """
-        Retrieves a token.
-        Priority 1: Explicit GITHUB_TOKEN env var.
-        Priority 2: Generate via API using GITHUB_PAT.
+        Retrieves a token with the following priority:
+        1. Use explicit GITHUB_TOKEN environment variable if provided
+        2. Generate token via GitHub API using GITHUB_PAT
         """
         if self.config.github_token:
             logger.info(f"Using provided GITHUB_TOKEN for {action}.")
@@ -446,46 +479,54 @@ class RunnerService:
         # Persist any orphaned configs and restore symlinks before starting
         self.fman.persist_config()
 
-        # Set up signal handlers
-        signal.signal(signal.SIGINT, self._handle_signal)
-        signal.signal(signal.SIGTERM, self._handle_signal)
-
-        # Main run loop
-        while not self._shutdown_requested:
-            logger.info("Starting Runner.Listener...")
-
-            cmd: List[str] = [str(self.config.listener_bin), "run"]
-            return_code: int = self._exec(cmd)
-
-            # Map raw int to Enum for readability
+        with SignalHandler() as handler:
             try:
-                exit_status = RunnerExitCode(return_code)
-            except ValueError:
-                logger.warning(f"Unknown exit code: {return_code}")
-                break
+                # Main run loop
+                while not handler.shutdown_requested:
+                    logger.info("Starting Runner.Listener...")
 
-            logger.info(f"Runner.Listener exited with code {return_code}")
+                    cmd: List[str] = [str(self.config.listener_bin), "run"]
+                    return_code: int = self._exec(cmd)
 
-            if exit_status == RunnerExitCode.SUCCESS:
-                logger.info("Runner exited normally.")
-                break
-            elif exit_status == RunnerExitCode.TERMINATED_ERROR:
-                logger.error("Runner terminated with error.")
-                break
-            elif exit_status == RunnerExitCode.RETRYABLE_ERROR:
-                logger.warning("Retryable error. Restarting in 5s...")
-                time.sleep(5)
-                self.fman.persist_config() # Re-check links
-                continue
-            elif exit_status in (RunnerExitCode.UPDATE_REQUIRED, RunnerExitCode.EPHEMERAL_UPDATE_REQUIRED):
-                logger.info(f"Update requested (Code {return_code}). Exiting container for rebuild.")
-                break
-            elif exit_status == RunnerExitCode.SESSION_CONFLICT:
-                logger.error("Session conflict detected.")
-                break
-            else:
-                logger.warning(f"Unexpected exit code: {return_code}")
-                break
+                    # Check shutdown flag immediately after subprocess completes
+                    # Signal may have arrived while waiting for process termination
+                    if handler.shutdown_requested:
+                        logger.info("Shutdown detected during execution loop.")
+                        break
+
+                    # Map raw int to Enum for readability
+                    try:
+                        exit_status = RunnerExitCode(return_code)
+                    except ValueError:
+                        logger.warning(f"Unknown exit code: {return_code}")
+                        break
+
+                    logger.info(f"Runner.Listener exited with code {return_code}")
+
+                    if exit_status == RunnerExitCode.SUCCESS:
+                        logger.info("Runner exited normally.")
+                        break
+                    elif exit_status == RunnerExitCode.TERMINATED_ERROR:
+                        logger.error("Runner terminated with error.")
+                        break
+                    elif exit_status == RunnerExitCode.RETRYABLE_ERROR:
+                        logger.warning("Retryable error. Restarting in 5s...")
+                        time.sleep(5)
+                        continue
+                    elif exit_status in (RunnerExitCode.UPDATE_REQUIRED, RunnerExitCode.EPHEMERAL_UPDATE_REQUIRED):
+                        logger.info(f"Update requested (Code {return_code}). Exiting container for rebuild.")
+                        break
+                    elif exit_status == RunnerExitCode.SESSION_CONFLICT:
+                        logger.error("Session conflict detected.")
+                        break
+                    else:
+                        logger.warning(f"Unexpected exit code: {return_code}")
+                        break
+            finally:
+                # Guaranteed state persistence on exit
+                # Preserves .credentials during updates, interrupts, errors, and all exit scenarios
+                logger.info("Persisting runner state and restoring symlinks before exit...")
+                self.fman.persist_config()
 
         logger.info("Runner service stopped.")
 
@@ -493,7 +534,7 @@ class RunnerService:
         """Remove and unregister the runner"""
         logger.info("Removing runner...")
 
-        # IMPORTANT: Restore symlinks before removal
+        # Restore configuration symlinks before unregistration
         self.fman.restore_config_links()
 
         # Fetch removal token
@@ -511,14 +552,6 @@ class RunnerService:
             logger.info("Runner removed successfully")
         else:
             raise RunnerError(f"Removal failed with code {returncode}")
-
-    def _handle_signal(self, signum: int, frame: Any):
-        try:
-            name = signal.Signals(signum).name
-        except ValueError:
-            name = str(signum)
-        logger.info(f"Received {name}. Shutting down...")
-        self._shutdown_requested = True
 
 def main():
     """Main entry point"""
