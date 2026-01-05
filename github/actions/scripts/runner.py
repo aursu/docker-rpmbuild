@@ -175,6 +175,11 @@ class Config:
     allow_root: bool = bool(os.getenv("RUNNER_ALLOW_RUNASROOT"))
     disable_update: bool = bool(os.getenv("RUNNER_DISABLE_UPDATE"))
 
+    # Timeouts
+    # Timeout for setup operations (configure/remove).
+    # Default: 60 seconds (Fail fast approach).
+    setup_timeout: int = int(os.getenv("RUNNER_SETUP_TIMEOUT", "60"))
+
     @property
     def listener_bin(self) -> Path:
         return self.runner_root / "bin" / "Runner.Listener"
@@ -425,10 +430,27 @@ class RunnerService:
         self.github = gh_client
         self._shutdown_requested: bool = False
 
-    def _exec(self, args: List[str]) -> int:
-        """Helper to execute subprocess command."""
+    def _exec(self, args: List[str], timeout: Optional[int] = None) -> int:
+        """
+        Helper to execute subprocess command.
+        
+        Args:
+            args: Command arguments as list.
+            timeout: Max execution time in seconds (None for infinite).
+        """
         try:
-            return subprocess.run(args, cwd=self.config.runner_home).returncode
+            # capture_output=False ensures logs are streamed to container stdout
+            result = subprocess.run(
+                args,
+                cwd=self.config.runner_home,
+                timeout=timeout  # <--- Apply timeout here
+            )
+            return result.returncode
+
+        except subprocess.TimeoutExpired:
+            logger.error(f"Command timed out after {timeout}s: {' '.join(args)}")
+            return RunnerExitCode.TERMINATED_ERROR
+
         except FileNotFoundError:
             raise RunnerError(f"Binary not found: {self.config.listener_bin}")
 
@@ -463,10 +485,11 @@ class RunnerService:
             cmd.append("--disableupdate")
             logger.info("Self-updates disabled")
 
-        logger.info(f"Configuring runner: {self.config.runner_name}")
+        logger.info(f"Configuring runner: {self.config.runner_name} (Timeout: {self.config.setup_timeout}s)")
         logger.info(f"Labels: {self.config.runner_labels}")
 
-        if (returncode := self._exec(cmd)) == 0:
+        # Execute with timeout
+        if (returncode := self._exec(cmd, timeout=self.config.setup_timeout)) == 0:
             logger.info("Runner configured successfully.")
             self.fman.persist_config()
         else:
@@ -547,8 +570,8 @@ class RunnerService:
             "--token", token
         ]
 
-        # Execute
-        if (returncode := self._exec(cmd)) == 0:
+        # Execute with timeout
+        if (returncode := self._exec(cmd, timeout=self.config.setup_timeout)) == 0:
             logger.info("Runner removed successfully")
         else:
             raise RunnerError(f"Removal failed with code {returncode}")
