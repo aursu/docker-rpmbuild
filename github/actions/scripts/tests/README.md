@@ -56,11 +56,3 @@ Unit tests for the SignalHandler context manager (in test_signal_handler.py):
 ### TestSignalHandlerIntegration
 Integration test for SignalHandler in realistic usage patterns (in test_signal_handler.py):
 - Typical run loop pattern with signal interruption and proper shutdown flag checking
-
-## Test Implementation Details
-
-All tests use `unittest.mock` to isolate functionality and prevent actual network calls. The RetryPolicy tests use a `ClientStub` pattern to test the decorator in isolation from GitHubClient business logic.
-
-Configuration for retry behavior can be controlled via:
-- `GITHUB_API_RETRIES` environment variable (default: 3)
-- `GITHUB_API_BACKOFF` environment variable (default: 1.5)
