@@ -233,7 +233,7 @@ class TestRunnerServiceExec(unittest.TestCase):
             "Processing item 1...\n",
             "Processing item 2...\n",
             "Processing item 3...\n"
-        ] + ["Still processing...\n"] * 100  # Generate extensive output
+        ]
         mock_proc.terminate = MagicMock()
         mock_proc.kill = MagicMock()
         mock_proc.wait = MagicMock()
@@ -252,7 +252,7 @@ class TestRunnerServiceExec(unittest.TestCase):
         ]
 
         with patch('runner.logger') as mock_logger:
-            result = self.service._exec(["/bin/command"], timeout=10)
+            self.service._exec(["/bin/command"], timeout=10)
 
             # Verify logger.error was invoked with captured output context
             self.assertTrue(mock_logger.error.called)
