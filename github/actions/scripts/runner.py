@@ -73,12 +73,14 @@ UPDATE PREVENTION:
 """
 
 import argparse
+from collections import deque
 import functools
 import json
 import logging
 import os
 import platform
 import random
+import select
 import shutil
 import signal
 import socket
@@ -423,6 +425,9 @@ class RunnerService:
     """
     Orchestrates the runner lifecycle (Configure -> Run -> Remove).
     """
+    IO_POLL_INTERVAL = 1.0
+    ERROR_LOG_SIZE = 50
+    TERMINATION_TIMEOUT = 5.0
 
     def __init__(self, config: Config, fman: FileSystemManager, gh_client: GitHubClient):
         self.config = config
@@ -430,43 +435,123 @@ class RunnerService:
         self.github = gh_client
         self._shutdown_requested: bool = False
 
-    def _exec(self, args: List[str], timeout: Optional[int] = None, capture: bool = False) -> int:
+    def _terminate_process(self, process: subprocess.Popen) -> None:
+        """
+        Terminate subprocess gracefully, escalating to force kill if needed.
+        
+        Args:
+            process: The subprocess to terminate.
+        """
+        if process is None or process.poll() is not None:
+            return
+
+        try:
+            # Attempt graceful shutdown first (SIGTERM)
+            process.terminate()
+            process.wait(timeout=self.TERMINATION_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            # Force kill if graceful termination fails (SIGKILL)
+            process.kill()
+            try:
+                process.wait(timeout=self.TERMINATION_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                # Process is stuck, will become zombie - OS will eventually clean up
+                pass
+
+    def _exec(self, args: List[str], timeout: Optional[int] = None) -> int:
         """
         Helper to execute subprocess command.
         
         Args:
             args: Command arguments as list.
             timeout: Max execution time in seconds (None for infinite).
-            capture: If True, captures stdout/stderr to raise detailed errors.
-                     If False, streams output directly to console (default).
         """
+        start_time = time.time()
+        binary_name = args[0]
+
+        captured_lines = deque(maxlen=self.ERROR_LOG_SIZE)
+        process = None
+
         try:
-            # capture_output=False ensures logs are streamed to container stdout
-            result = subprocess.run(
+            with subprocess.Popen(
                 args,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,  # Merge stderr and stdout into single stream
+                text=True,
                 cwd=self.config.runner_home,
-                timeout=timeout,  # <--- Apply timeout here
-                capture_output=capture,
-                text=True if capture else False  # Decode bytes to string only if capturing
-            )
+                bufsize=1  # Line buffered
+            ) as proc:
+                # Lazy initialization pattern
+                process = proc
 
-            # Logic for Captured mode (Configure/Remove)
-            if capture and result.returncode != 0:
-                # Extract the last meaningful error line for clarity
-                err_msg = result.stderr.strip() if result.stderr else "Unknown error"
-                # Raise immediately with the actual error text
-                raise RunnerError(f"Command failed (Code {result.returncode}):\n{err_msg}")
+                while True:
+                    run_time = time.time() - start_time
+                    if timeout:
+                        if run_time > timeout:
+                            # Timeout exceeded before entering wait state
+                            raise subprocess.TimeoutExpired(cmd=args, timeout=timeout)
+                        wait_time = timeout - run_time
+                    else:
+                        # No timeout specified (run mode): use heartbeat interval
+                        # to periodically check for OS signals and prevent indefinite blocking
+                        wait_time = self.IO_POLL_INTERVAL
 
-            return result.returncode
+                    # Pass precise wait time to select() for I/O monitoring
+                    rlist = [process.stdout.fileno()]
+                    rready, _, _ = select.select(rlist, [], [], wait_time)
 
-        except subprocess.TimeoutExpired as e:
-            # If we were capturing, the partial stderr is in e.stderr
-            stderr_info = f"\nOutput: {e.stderr.decode()}" if capture and e.stderr else ""
+                    # If select() returned empty list (poll interval elapsed with no data)
+                    if not rready:
+                        # No data available. Check if process has terminated.
+                        # https://docs.python.org/3/library/subprocess.html#subprocess.Popen.poll
+                        if process.poll() is not None:
+                            break
+                        # Process still alive, no data ready. Continue to next iteration
+                        # to check timeout at start of loop
+                        continue
+
+                    # https://docs.python.org/3/library/subprocess.html#subprocess.Popen.stdout
+                    line = process.stdout.readline()
+
+                    # Process terminated, no more output available
+                    if not line:
+                        break
+
+                    sys.stdout.write(line)
+                    sys.stdout.flush()
+
+                    captured_lines.append(line)
+
+            return_code = process.poll()
+
+            if return_code != 0:
+                # Convert deque to string for error reporting
+                error_context = "".join(captured_lines).strip()
+                raise RunnerError(f"Command failed (Code {return_code}).\nLast output:\n{error_context}")
+
+            return return_code
+
+        except subprocess.TimeoutExpired:
+            self._terminate_process(process)
+
+            # Extract accumulated log from deque
+            error_context = "".join(captured_lines).strip()
+            stderr_info = f"\nLast output:\n{error_context}" if error_context else ""
+
             logger.error(f"Command timed out after {timeout}s: {' '.join(args)}{stderr_info}")
-            return RunnerExitCode.TERMINATED_ERROR
 
+            # Return terminated error exit code
+            return RunnerExitCode.TERMINATED_ERROR
         except FileNotFoundError:
-            raise RunnerError(f"Binary not found: {self.config.listener_bin}")
+            raise RunnerError(f"Binary not found: {binary_name}")
+        except Exception as e:
+            self._terminate_process(process)
+
+            # If already RunnerError (from non-zero return code), re-raise unchanged
+            if isinstance(e, RunnerError):
+                raise e
+            # Handle unexpected errors
+            raise RunnerError(f"Unexpected error executing {binary_name}: {e}")
 
     def configure(self):
         """Configure and register the runner"""
