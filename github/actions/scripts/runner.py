@@ -235,6 +235,28 @@ class FileSystemManager:
         if os.geteuid() == 0 and not self.config.allow_root:
             raise RunnerError("Must not run as root. Set RUNNER_ALLOW_RUNASROOT=1 to override.")
 
+    def verify_binary_permissions(self) -> None:
+        """
+        Checks if Runner.Listener exists and is executable.
+        Attempts to fix permissions if missing.
+        """
+        bin_path = self.config.listener_bin
+
+        if not bin_path.exists():
+            raise RunnerError(f"Runner binary not found at: {bin_path}")
+
+        # Check for execution access (os.X_OK)
+        if not os.access(bin_path, os.X_OK):
+            logger.warning(f"Binary {bin_path} is not executable. Attempting to fix (chmod +x)...")
+            try:
+                # Add executable bit for User, Group, and Other (chmod a+x)
+                # 0o111 adds --x--x--x to existing permissions
+                current_mode = bin_path.stat().st_mode
+                bin_path.chmod(current_mode | 0o111)
+                logger.info("Successfully added executable permissions.")
+            except OSError as e:
+                raise RunnerError(f"Failed to set executable permissions on {bin_path}: {e}")
+
     def create_env_files(self):
         """Generates .env and .path files for the runner."""
         env_file: Path = self.config.runner_home / ".env"
@@ -700,6 +722,7 @@ def main():
 
         fman = FileSystemManager(config)
         fman.check_user_permissions()
+        fman.verify_binary_permissions()
 
         # Initialize controller
         github = GitHubClient(config)
