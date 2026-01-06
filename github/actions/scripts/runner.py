@@ -80,6 +80,7 @@ import logging
 import os
 import platform
 import random
+import re
 import select
 import shutil
 import signal
@@ -169,9 +170,9 @@ class Config:
     api_retries: int = int(os.getenv("GITHUB_API_RETRIES", "3"))
     api_backoff: float = float(os.getenv("GITHUB_API_BACKOFF", "1.5"))
 
-    runner_name: str = os.getenv("RUNNER_NAME") or f"github-actions-runner-{socket.gethostname()}"
-    runner_group: str = os.getenv("RUNNER_GROUP", "Default")
-    runner_labels: str = os.getenv("RUNNER_LABELS", "self-hosted,linux,x64")
+    runner_name: str = field(default_factory=lambda: os.getenv("RUNNER_NAME") or f"github-actions-runner-{socket.gethostname()}")
+    runner_group: str = field(default_factory=lambda: os.getenv("RUNNER_GROUP", "Default"))
+    runner_labels: str = field(default_factory=lambda: os.getenv("RUNNER_LABELS", "self-hosted,linux,x64"))
     runner_work_dir: str = os.getenv("RUNNER_WORKSPACE", "_work")
 
     allow_root: bool = bool(os.getenv("RUNNER_ALLOW_RUNASROOT"))
@@ -183,6 +184,9 @@ class Config:
     setup_timeout: int = int(os.getenv("RUNNER_SETUP_TIMEOUT", "60"))
     retry_delay: int = field(default_factory=lambda: int(os.getenv("RUNNER_RETRY_DELAY", "5")))
 
+    NAME_PATTERN = re.compile(r'^[a-zA-Z0-9._-]+$')
+    LABEL_PATTERN = re.compile(r'^[a-zA-Z0-9._-]+$')
+
     @property
     def listener_bin(self) -> Path:
         return self.runner_root / "bin" / "Runner.Listener"
@@ -193,6 +197,32 @@ class Config:
             raise RunnerError("GITHUB_URL environment variable is required.")
         if not self.github_token and not self.github_pat:
             raise RunnerError("Either GITHUB_TOKEN or GITHUB_PAT must be provided.")
+
+        # Validate Runner Name
+        if not self.NAME_PATTERN.match(self.runner_name):
+            raise RunnerError(
+                f"Invalid RUNNER_NAME '{self.runner_name}'. "
+                "Allowed characters: a-z, A-Z, 0-9, '-', '_', '.'"
+            )
+
+        # Validate Runner Group (if provided)
+        if self.runner_group and not self.NAME_PATTERN.match(self.runner_group):
+            raise RunnerError(
+                f"Invalid RUNNER_GROUP '{self.runner_group}'. "
+                "Allowed characters: a-z, A-Z, 0-9, '-', '_', '.'"
+            )
+
+        # Validate Labels (if provided)
+        if self.runner_labels:
+            # Split by comma and strip whitespace
+            label_list = [l.strip() for l in self.runner_labels.split(',') if l.strip()]
+
+            for label in label_list:
+                if not self.LABEL_PATTERN.match(label):
+                    raise RunnerError(
+                        f"Invalid label '{label}' in RUNNER_LABELS. "
+                        "Allowed characters: a-z, A-Z, 0-9, '-', '_', '.'"
+                    )
 
 # --- Components ---
 class FileSystemManager:
