@@ -41,6 +41,24 @@ Comprehensive unit tests for the RetryPolicy decorator:
 - Custom configuration support (retries, backoff factor)
 - Default fallback behavior when config is not provided
 
+### TestRunnerServiceExecIntegration (in test_service_exec.py)
+Integration tests for RunnerService._exec() method with real subprocess execution:
+- Successful command execution with real /bin/echo and output capture
+- FileNotFoundError handling for non-existent binary
+- Silent command execution with /usr/bin/true (no output)
+
+### TestRunnerServiceExec (in test_service_exec.py)
+Unit tests for RunnerService._exec() subprocess execution method with mocked processes:
+- Successful command execution with output capture (mocked)
+- Command failure with error context capture
+- Timeout handling with process termination
+- Timeout with captured error output in logs
+- Bounded error context (last 50 lines) for large outputs
+- Silent command execution (no output, mocked)
+- IO poll interval usage for heartbeat checking
+- Process termination helper (_terminate_process):
+  - Escalation to SIGKILL on timeout
+
 ### TestSignalHandler
 Unit tests for the SignalHandler context manager (in test_signal_handler.py):
 - Context manager lifecycle (enter/exit behavior)
