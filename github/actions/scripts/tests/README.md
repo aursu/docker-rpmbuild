@@ -19,18 +19,20 @@ python3 -m unittest discover tests/
 
 ## Test Coverage
 
-### TestConfig
-Configuration validation tests:
+### TestConfig (in test_runner.py)
+Configuration validation and environment variable handling tests:
 - Validation error handling when required environment variables are missing
 - Successful configuration validation with valid environment variables
+- Retry delay default value verification
+- Retry delay configuration from RUNNER_RETRY_DELAY environment variable
 
-### TestGitHubClient
+### TestGitHubClient (in test_runner.py)
 Integration tests for GitHubClient API interactions:
 - Successful token retrieval from GitHub API
 - API URL generation with proper authentication headers and user agent
 - Retry logic on 500 server errors with exponential backoff
 
-### TestRetryPolicy
+### TestRetryPolicy (in test_runner.py)
 Comprehensive unit tests for the RetryPolicy decorator:
 - Successful calls without retry
 - Retry behavior on network errors (URLError)
@@ -46,6 +48,7 @@ Integration tests for RunnerService._exec() method with real subprocess executio
 - Successful command execution with real /bin/echo and output capture
 - FileNotFoundError handling for non-existent binary
 - Silent command execution with /usr/bin/true (no output)
+- Run loop integration test with configurable retry delay (verifies RUNNER_RETRY_DELAY is used)
 
 ### TestRunnerServiceExec (in test_service_exec.py)
 Unit tests for RunnerService._exec() subprocess execution method with mocked processes:
@@ -59,7 +62,7 @@ Unit tests for RunnerService._exec() subprocess execution method with mocked pro
 - Process termination helper (_terminate_process):
   - Escalation to SIGKILL on timeout
 
-### TestSignalHandler
+### TestSignalHandler (in test_signal_handler.py)
 Unit tests for the SignalHandler context manager (in test_signal_handler.py):
 - Context manager lifecycle (enter/exit behavior)
 - Signal handler installation and restoration
