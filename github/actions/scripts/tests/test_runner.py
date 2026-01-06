@@ -31,6 +31,23 @@ class TestConfig(unittest.TestCase):
             config.validate()
             self.assertEqual(config.github_url, "https://github.com/rpmbsys")
 
+    def test_retry_delay_default(self):
+        """Test default retry delay is 5 seconds"""
+        # Нужно замокать обязательные поля, чтобы validate не упал (если он вызывается в init)
+        with patch.dict('os.environ', {"GITHUB_URL": "https://github.com/rpmbsys"}, clear=True):
+            config = runner.Config()
+            self.assertEqual(config.retry_delay, 5)
+
+    def test_retry_delay_from_env(self):
+        """Test retry delay override"""
+        env = {
+            "GITHUB_URL": "https://github.com/rpmbsys",
+            "RUNNER_RETRY_DELAY": "60",
+        }
+        with patch.dict('os.environ', env, clear=True):
+            config = runner.Config()
+            self.assertEqual(config.retry_delay, 60)
+
 class TestGitHubClient(unittest.TestCase):
     def setUp(self):
         self.config = MagicMock()

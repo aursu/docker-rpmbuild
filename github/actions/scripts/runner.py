@@ -181,6 +181,7 @@ class Config:
     # Timeout for setup operations (configure/remove).
     # Default: 60 seconds (Fail fast approach).
     setup_timeout: int = int(os.getenv("RUNNER_SETUP_TIMEOUT", "60"))
+    retry_delay: int = field(default_factory=lambda: int(os.getenv("RUNNER_RETRY_DELAY", "5")))
 
     @property
     def listener_bin(self) -> Path:
@@ -480,13 +481,15 @@ class RunnerService:
                 # Process is stuck, will become zombie - OS will eventually clean up
                 pass
 
-    def _exec(self, args: List[str], timeout: Optional[int] = None) -> int:
+    def _exec(self, args: List[str], timeout: Optional[int] = None, check: bool = True) -> int:
         """
         Helper to execute subprocess command.
         
         Args:
             args: Command arguments as list.
             timeout: Max execution time in seconds (None for infinite).
+            check: if true, and the process exits with a non-zero exit code,
+                   a RunnerError exception will be raised
         """
         start_time = time.time()
         binary_name = args[0]
@@ -546,7 +549,7 @@ class RunnerService:
 
             return_code = process.poll()
 
-            if return_code != 0:
+            if return_code != 0 and check:
                 # Convert deque to string for error reporting
                 error_context = "".join(captured_lines).strip()
                 raise RunnerError(f"Command failed (Code {return_code}).\nLast output:\n{error_context}")
@@ -630,7 +633,7 @@ class RunnerService:
                     logger.info("Starting Runner.Listener...")
 
                     cmd: List[str] = [str(self.config.listener_bin), "run"]
-                    return_code: int = self._exec(cmd)
+                    return_code: int = self._exec(cmd, check=False)
 
                     # Check shutdown flag immediately after subprocess completes
                     # Signal may have arrived while waiting for process termination
@@ -654,8 +657,9 @@ class RunnerService:
                         logger.error("Runner terminated with error.")
                         break
                     elif exit_status == RunnerExitCode.RETRYABLE_ERROR:
-                        logger.warning("Retryable error. Restarting in 5s...")
-                        time.sleep(5)
+                        delay = self.config.retry_delay
+                        logger.warning(f"Retryable error. Restarting in {delay}s...")
+                        time.sleep(delay)
                         continue
                     elif exit_status in (RunnerExitCode.UPDATE_REQUIRED, RunnerExitCode.EPHEMERAL_UPDATE_REQUIRED):
                         logger.info(f"Update requested (Code {return_code}). Exiting container for rebuild.")
