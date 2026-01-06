@@ -77,3 +77,20 @@ Unit tests for the SignalHandler context manager (in test_signal_handler.py):
 ### TestSignalHandlerIntegration
 Integration test for SignalHandler in realistic usage patterns (in test_signal_handler.py):
 - Typical run loop pattern with signal interruption and proper shutdown flag checking
+
+### TestSecuritySanitization (in test_security.py)
+Unit and integration tests for credential sanitization and log security:
+- Token masking in _sanitize_args for runner configuration commands
+- Multiple sensitive flags handling (--token, --pat)
+- Robustness with malformed commands (flag without value)
+- Normal commands pass through unchanged
+- Integration test verifying sanitized logging during timeout errors
+
+## Total Test Count
+
+**44 tests** across 6 test classes ensuring comprehensive coverage of:
+- Configuration validation
+- API integration and retry logic
+- Subprocess execution and timeout handling
+- Signal management
+- Security and credential protection
