@@ -23,6 +23,7 @@ python3 -m unittest discover tests/
 Configuration validation and environment variable handling tests:
 - Validation error handling when required environment variables are missing
 - Successful configuration validation with valid environment variables
+- Input validation for runner names, groups, and labels (via regex patterns)
 - Retry delay default value verification
 - Retry delay configuration from RUNNER_RETRY_DELAY environment variable
 
@@ -89,7 +90,7 @@ Unit and integration tests for credential sanitization and log security:
 ## Total Test Count
 
 **44 tests** across 6 test classes ensuring comprehensive coverage of:
-- Configuration validation
+- Configuration validation and input sanitization
 - API integration and retry logic
 - Subprocess execution and timeout handling
 - Signal management
