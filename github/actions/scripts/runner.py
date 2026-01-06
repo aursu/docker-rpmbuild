@@ -451,12 +451,37 @@ class RunnerService:
     IO_POLL_INTERVAL = 1.0
     ERROR_LOG_SIZE = 50
     TERMINATION_TIMEOUT = 5.0
+    SENSITIVE_FLAGS = {'--token', '--pat'}
 
     def __init__(self, config: Config, fman: FileSystemManager, gh_client: GitHubClient):
         self.config = config
         self.fman = fman
         self.github = gh_client
         self._shutdown_requested: bool = False
+
+    def _sanitize_args(self, args: List[str]) -> str:
+        """
+        Masks values of sensitive arguments for logging purposes.
+        Example: ['--token', 'SECRET'] -> '--token ***'
+        """
+        if not args:
+            return ""
+
+        sanitized = []
+        i = 0
+        while i < len(args):
+            arg = args[i]
+            sanitized.append(arg)
+
+            # If the current argument is a sensitive flag, mask the NEXT argument
+            if arg in self.SENSITIVE_FLAGS and i + 1 < len(args):
+                sanitized.append("***")
+                i += 2  # Skip the next argument (the actual value)
+                continue
+
+            i += 1
+
+        return " ".join(sanitized)
 
     def _terminate_process(self, process: subprocess.Popen) -> None:
         """
@@ -563,7 +588,8 @@ class RunnerService:
             error_context = "".join(captured_lines).strip()
             stderr_info = f"\nLast output:\n{error_context}" if error_context else ""
 
-            logger.error(f"Command timed out after {timeout}s: {' '.join(args)}{stderr_info}")
+            safe_comm = self._sanitize_args(args)
+            logger.error(f"Command timed out after {timeout}s: {safe_comm}{stderr_info}")
 
             # Return terminated error exit code
             return RunnerExitCode.TERMINATED_ERROR
