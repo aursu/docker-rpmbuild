@@ -107,6 +107,15 @@ workflows:
           requires:
             - rocky10docker
       - docker-rpmbuild/image:
+          name: githubrunnerbase
+          compose_file: github/docker-compose.yml
+          build_service: githubrunnerbase
+          registry: ghcr.io
+          context:
+            - github-packages
+          requires:
+            - rocky10docker2x
+      - docker-rpmbuild/image:
           name: rocky9buildroot
           compose_file: 9-rocky/docker-compose.yml
           build_service: rocky9buildroot
