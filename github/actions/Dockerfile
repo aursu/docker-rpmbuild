@@ -6,8 +6,8 @@ FROM ghcr.io/aursu/rpmbuild:${rocky}-${image}
 # source: https://github.com/actions/runner/releases
 # ex: 2.330.0
 ARG RUNNER_ARCH="x64"
-ARG RUNNER_VERSION="2.330.0"
-ARG RUNNER_CHECKSUM=af5c33fa94f3cc33b8e97937939136a6b04197e6dadfcfb3b6e33ae1bf41e79a
+ARG RUNNER_VERSION="2.331.0"
+ARG RUNNER_CHECKSUM=5fcc01bd546ba5c3f1291c2803658ebd3cedb3836489eda3be357d41bfcf28a7
 
 # Replace value with the latest runner-container-hooks release version
 # source: https://github.com/actions/runner-container-hooks/releases
