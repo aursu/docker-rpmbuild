@@ -74,6 +74,7 @@ UPDATE PREVENTION:
 
 import argparse
 from collections import deque
+import errno
 import functools
 import json
 import logging
@@ -342,6 +343,50 @@ class FileSystemManager:
             else:
                 logger.debug(f"Config file {filename} not found on volume, skipping symlink")
 
+    def _safe_remove(self, path: Path):
+        """
+        Helper to remove a file or symlink without raising errors if missing.
+        """
+        try:
+            if path.is_symlink() or path.is_file():
+                path.unlink(missing_ok=True)
+                logger.debug(f"Removed: {path}")
+            elif path.is_dir():
+                # Some config items might theoretically be dirs (rare for standard runner)
+                shutil.rmtree(path)
+                logger.debug(f"Removed directory: {path}")
+        except OSError as e:
+            if e.errno == errno.ENOENT:
+                logger.debug(f"Skipping removal of {path}: File already missing.")
+            else:
+                logger.warning(f"Failed to remove {path}: {e}")
+
+    def cleanup_runner_state(self):
+        """
+        Removes ONLY the files related to runner registration (.runner, .credentials, etc.).
+        
+        Removes both the persistent file on volume and the symlink in root
+        """
+        logger.info("Cleaning up registration configuration files...")
+
+        targets = self.CONFIG_FILES + ['.env', '.path']
+
+        for filename in targets:
+            # 1. Remove the source of truth (Volume)
+            self._safe_remove(self.config.runner_home / filename)
+
+            # 2. Remove the symlink (Install Root)
+            self._safe_remove(self.config.runner_root / filename)
+
+        logger.info("Configuration cleanup complete. Ready for re-registration.")
+
+    def is_configured(self) -> bool:
+        """
+        Checks if the runner is already configured locally.
+        Presence of .runner file is the main indicator.
+        """
+        return (self.config.runner_home / ".runner").exists()
+
 class RetryPolicy:
     """
     Class-based decorator for network resilience.
@@ -407,7 +452,11 @@ class GitHubClient:
     def __init__(self, config: Config):
         self.config = config
 
-    def _get_api_url(self, action: str) -> str:
+    def _build_endpoint(self, path_suffix: str) -> str:
+        """
+        Constructs the full API URL based on the configured GITHUB_URL.
+        Helper to avoid code duplication between get_token and get_runner_status.
+        """
         parsed = urlparse(self.config.github_url)
         parts: List[str] = [p for p in parsed.path.split('/') if p]
 
@@ -423,9 +472,10 @@ class GitHubClient:
         if parsed.hostname == "github.com":
             api_base = "https://api.github.com"
         else:
+            # For GHES (Enterprise)
             api_base = f"{parsed.scheme}://{parsed.netloc}/api/v3"
 
-        return f"{api_base}/{scope}/actions/runners/{action}-token"
+        return f"{api_base}/{scope}/{path_suffix}"
 
     # Network operation helper method decorated with retry logic
     # The RetryPolicy decorator intercepts URLError/HTTPError exceptions and performs automatic retries
@@ -434,23 +484,23 @@ class GitHubClient:
         with urlopen(req, timeout=30) as resp:
             return resp.read()
 
-    def get_token(self, action: str) -> str:
+    def _execute_api_call(self, suffix: str, method: str = "GET", params: str = "") -> Any:
         """
-        Retrieves a token with the following priority:
-        1. Use explicit GITHUB_TOKEN environment variable if provided
-        2. Generate token via GitHub API using GITHUB_PAT
+        Unified handler for API requests.
+        Constructs URL -> Adds Auth Headers -> Sends Request -> Parses JSON.
+        Handles all generic HTTP/Network errors by raising RunnerError.
         """
-        if self.config.github_token:
-            logger.info(f"Using provided GITHUB_TOKEN for {action}.")
-            return self.config.github_token
-
+        # 1. Проверка PAT
         if not self.config.github_pat:
-            raise RunnerError(f"No GITHUB_TOKEN or GITHUB_PAT available for {action}.")
+             raise RunnerError("GITHUB_PAT is required for API interactions.")
 
-        api_url: str = self._get_api_url(action)
-        logger.info(f"Requesting {action} token via API...")
+        # 2. Сборка URL
+        url = self._build_endpoint(suffix)
+        if params:
+            url += f"?{params}"
 
-        req = Request(api_url, method="POST")
+        # 3. Создание запроса
+        req = Request(url, method=method)
         req.add_header("Authorization", f"Bearer {self.config.github_pat}")
         req.add_header("Accept", "application/vnd.github+json")
         req.add_header("X-GitHub-Api-Version", "2022-11-28")
@@ -458,21 +508,68 @@ class GitHubClient:
         user_agent = f"RunnerController/{__version__} (Python {platform.python_version()}; {platform.system()})"
         req.add_header("User-Agent", user_agent)
 
+        # 4. Выполнение и Централизованная обработка ошибок
         try:
             raw_response = self._send_request(req)
+            return json.loads(raw_response.decode())
 
-            data = json.loads(raw_response.decode())
-            return data["token"]
         except HTTPError as e:
             if e.code == 401:
                 raise RunnerError("Invalid GITHUB_PAT (401 Unauthorized).")
             elif e.code == 404:
-                raise RunnerError("Repo/Org not found or PAT missing permissions (404).")
+                raise RunnerError(f"Resource not found at {url} (404). Check permissions or URL.")
             raise RunnerError(f"GitHub API Error: {e.code} {e.reason}")
+
         except URLError as e:
-            raise RunnerError(f"Token fetch failed: {str(e)}")
+            raise RunnerError(f"Network error connecting to GitHub: {str(e)}")
+
         except (KeyError, json.JSONDecodeError) as e:
             raise RunnerError(f"Invalid API response: {str(e)}")
+
+    def get_token(self, action: str) -> str:
+        """
+        Retrieves a registration or removal token.
+        """
+        if self.config.github_token:
+            logger.info(f"Using provided GITHUB_TOKEN for {action}.")
+            return self.config.github_token
+
+        logger.info(f"Requesting {action} token via API...")
+
+        # All complexity is delegated to _execute_api_call
+        # Any errors will be raised as RunnerError
+        data = self._execute_api_call(f"actions/runners/{action}-token", method="POST")
+
+        return data["token"]
+
+    def get_runner_status(self, runner_name: str) -> bool:
+        """
+        Checks if a runner is registered.
+        Returns True if found OR if verification fails (fail-safe).
+        """
+        if not self.config.github_pat:
+            logger.warning("Skipping status check: No PAT provided.")
+            return True
+
+        try:
+            # Search for runner (per_page=100 for reliability)
+            data = self._execute_api_call("actions/runners", method="GET", params="per_page=100")
+
+            runners = data.get("runners", [])
+            for r in runners:
+                if r.get("name") == runner_name:
+                    logger.info(f"Runner found: ID={r.get('id')}, Status={r.get('status')}")
+                    return True
+
+            logger.warning(f"Runner '{runner_name}' NOT found in GitHub list.")
+            return False
+
+        except RunnerError as e:
+            # Catch errors raised by _execute_api_call.
+            # Fail-safe strategy: if API is unavailable, assume runner exists
+            # to avoid accidentally removing working configurations.
+            logger.error(f"Failed to verify runner status: {e}")
+            return True
 
 class RunnerService:
     """
@@ -734,6 +831,32 @@ class RunnerService:
 
         logger.info("Runner service stopped.")
 
+    def startup(self):
+        """
+        Smart entrypoint.
+        """
+        runner_name = self.config.runner_name
+
+        # 1. Check local configuration
+        if self.fman.is_configured():
+            logger.info("Local configuration found. Verifying with GitHub...")
+
+            # 2. Check remote status
+            if not self.github.get_runner_status(runner_name):
+                logger.warning(f"Runner '{runner_name}' is orphaned (deleted from GitHub).")
+                logger.warning("Triggering configuration cleanup (preserving workspace)...")
+
+                self.fman.cleanup_config_only()
+            else:
+                logger.info("Runner is valid.")
+
+        # 3. Configure if necessary
+        if not self.fman.is_configured():
+            self.configure()
+
+        # 4. Run
+        self.run()
+
     def remove(self):
         """Remove and unregister the runner"""
         logger.info("Removing runner...")
@@ -765,6 +888,7 @@ def main():
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
     # Subcommands
+    subparsers.add_parser("startup", help="Idempotent start: verifies registration, re-configures if needed, and runs")
     subparsers.add_parser("configure", help="Configure the runner")
     subparsers.add_parser("run", help="Start the runner listener")
     subparsers.add_parser("remove", help="Unregister the runner")
@@ -773,7 +897,7 @@ def main():
     args = parser.parse_args()
 
     # Default to 'run' if no args provided
-    command = args.command or "run"
+    command = args.command or "startup"
 
     try:
         # Initialize Dependency Injection
@@ -789,7 +913,9 @@ def main():
         service = RunnerService(config, fman, github)
 
         # Execute
-        if command == "configure":
+        if command == "startup":
+            service.startup()
+        elif command == "configure":
             service.configure()
         elif command == "run":
             service.run()

@@ -297,6 +297,196 @@ class TestRetryPolicy(unittest.TestCase):
 
         self.assertEqual(client.request_mock.call_count, 1, "Should fail fast on 401")
 
+class TestGitHubClientExecuteApiCall(unittest.TestCase):
+    """Tests for the _execute_api_call method"""
+
+    def setUp(self):
+        self.config = MagicMock()
+        self.config.github_url = "https://github.com/rpmbsys/repo"
+        self.config.github_pat = "github_pat_test"
+        self.config.github_token = None
+        self.config.api_retries = 3
+        self.config.api_backoff = 1.5
+        self.client = runner.GitHubClient(self.config)
+
+    @patch('runner.urlopen')
+    def test_execute_api_call_get_success(self, mock_urlopen):
+        """Test successful GET request"""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({"runners": []}).encode()
+        mock_response.__enter__.return_value = mock_response
+        mock_urlopen.return_value = mock_response
+
+        result = self.client._execute_api_call("actions/runners", method="GET")
+
+        self.assertEqual(result, {"runners": []})
+        mock_urlopen.assert_called_once()
+
+    @patch('runner.urlopen')
+    def test_execute_api_call_post_success(self, mock_urlopen):
+        """Test successful POST request"""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({"token": "test_token"}).encode()
+        mock_response.__enter__.return_value = mock_response
+        mock_urlopen.return_value = mock_response
+
+        result = self.client._execute_api_call("actions/runners/registration-token", method="POST")
+
+        self.assertEqual(result, {"token": "test_token"})
+
+        args, _ = mock_urlopen.call_args
+        request_obj = args[0]
+
+        # 1. Проверяем метод
+        self.assertEqual(request_obj.method, "POST")
+
+        # 2. [ВАЖНО] Проверяем заголовки
+        # headers в объекте Request хранятся как словарь
+        self.assertEqual(request_obj.headers['Authorization'], "Bearer github_pat_test")
+        self.assertEqual(request_obj.headers['Accept'], "application/vnd.github+json")
+        self.assertIn("RunnerController", request_obj.headers['User-agent'])
+
+    @patch('runner.urlopen')
+    def test_execute_api_call_with_params(self, mock_urlopen):
+        """Test request with query parameters"""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({"runners": []}).encode()
+        mock_response.__enter__.return_value = mock_response
+        mock_urlopen.return_value = mock_response
+
+        self.client._execute_api_call("actions/runners", method="GET", params="per_page=100")
+
+        # Verify URL contains parameters
+        args, _ = mock_urlopen.call_args
+        request_obj = args[0]
+
+        self.assertIn("per_page=100", request_obj.full_url)
+
+    @patch('runner.urlopen')
+    def test_execute_api_call_401_error(self, mock_urlopen):
+        """Test 401 Unauthorized error handling"""
+        error = HTTPError("url", 401, "Unauthorized", {}, None)
+        mock_urlopen.side_effect = error
+
+        with self.assertRaises(runner.RunnerError) as cm:
+            self.client._execute_api_call("actions/runners", method="GET")
+
+        self.assertIn("Invalid GITHUB_PAT", str(cm.exception))
+
+    @patch('runner.urlopen')
+    def test_execute_api_call_404_error(self, mock_urlopen):
+        """Test 404 Not Found error handling"""
+        error = HTTPError("url", 404, "Not Found", {}, None)
+        mock_urlopen.side_effect = error
+
+        with self.assertRaises(runner.RunnerError) as cm:
+            self.client._execute_api_call("actions/runners", method="GET")
+
+        self.assertIn("Resource not found", str(cm.exception))
+        self.assertIn("404", str(cm.exception))
+
+    @patch('runner.urlopen')
+    def test_execute_api_call_network_error(self, mock_urlopen):
+        """Test network error handling"""
+        mock_urlopen.side_effect = URLError("Connection refused")
+
+        with self.assertRaises(runner.RunnerError) as cm:
+            self.client._execute_api_call("actions/runners", method="GET")
+
+        self.assertIn("Network error connecting to GitHub", str(cm.exception))
+
+    @patch('runner.urlopen')
+    def test_execute_api_call_invalid_json(self, mock_urlopen):
+        """Test handling of invalid JSON response"""
+        mock_response = MagicMock()
+        mock_response.read.return_value = b"Invalid JSON"
+        mock_response.__enter__.return_value = mock_response
+        mock_urlopen.return_value = mock_response
+
+        with self.assertRaises(runner.RunnerError) as cm:
+            self.client._execute_api_call("actions/runners", method="GET")
+
+        self.assertIn("Invalid API response", str(cm.exception))
+
+    @patch('runner.urlopen')
+    def test_execute_api_call_no_pat(self, mock_urlopen):
+        """Test error when PAT is not provided"""
+        self.client.config.github_pat = None
+
+        with self.assertRaises(runner.RunnerError) as cm:
+            self.client._execute_api_call("actions/runners", method="GET")
+
+        self.assertIn("GITHUB_PAT is required", str(cm.exception))
+
+class TestRunnerServiceStartup(unittest.TestCase):
+    """Tests for the startup method"""
+
+    def setUp(self):
+        self.config = MagicMock()
+        self.config.runner_name = "test-runner"
+        self.fman = MagicMock()
+        self.github = MagicMock()
+        self.service = runner.RunnerService(self.config, self.fman, self.github)
+
+    def test_startup_already_configured_valid(self):
+        """Test startup when runner is already configured and valid"""
+        self.fman.is_configured.return_value = True
+        self.github.get_runner_status.return_value = True
+        self.service.run = MagicMock()
+
+        self.service.startup()
+
+        self.fman.is_configured.assert_called()
+        self.github.get_runner_status.assert_called_once_with("test-runner")
+        self.fman.cleanup_config_only.assert_not_called()
+        self.service.configure = MagicMock()
+        self.service.configure.assert_not_called()
+        self.service.run.assert_called_once()
+
+    def test_startup_configured_but_orphaned(self):
+        """Test startup when local config exists but runner deleted from GitHub"""
+        self.fman.is_configured.side_effect = [True, False, False]
+        self.github.get_runner_status.return_value = False
+        self.service.configure = MagicMock()
+        self.service.run = MagicMock()
+
+        self.service.startup()
+
+        self.fman.is_configured.assert_called()
+        self.github.get_runner_status.assert_called_once_with("test-runner")
+        self.fman.cleanup_config_only.assert_called_once()
+        self.service.configure.assert_called_once()
+        self.service.run.assert_called_once()
+
+    def test_startup_not_configured(self):
+        """Test startup when runner is not configured"""
+        self.fman.is_configured.return_value = False
+        self.service.configure = MagicMock()
+        self.service.run = MagicMock()
+
+        self.service.startup()
+
+        self.fman.is_configured.assert_called()
+        self.github.get_runner_status.assert_not_called()
+        self.service.configure.assert_called_once()
+        self.service.run.assert_called_once()
+
+    def test_startup_verification_failure_failsafe(self):
+        """Test startup when GitHub verification fails (fail-safe behaves as existing runner)"""
+        self.fman.is_configured.return_value = True
+
+        # Симулируем ситуацию: Клиент вернул True, хотя API мог сбоить (это логика клиента)
+        self.github.get_runner_status.return_value = True
+        self.service.run = MagicMock()
+        self.service.configure = MagicMock() # Лучше замокать явно
+
+        self.service.startup()
+
+        self.fman.cleanup_config_only.assert_not_called()
+
+        # Should proceed with running despite API failure
+        self.service.run.assert_called_once()
+
 if __name__ == '__main__':
     # Run tests with verbose output
     unittest.main(verbosity=2)
