@@ -837,16 +837,19 @@ class RunnerService:
         """
         runner_name = self.config.runner_name
 
-        # 1. Check local configuration
         if self.fman.is_configured():
-            logger.info("Local configuration found. Verifying with GitHub...")
+            logger.info("Local configuration found.")
+
+            self.fman.restore_config_links()
+
+            logger.info("Verifying registration with GitHub...")
 
             # 2. Check remote status
             if not self.github.get_runner_status(runner_name):
                 logger.warning(f"Runner '{runner_name}' is orphaned (deleted from GitHub).")
                 logger.warning("Triggering configuration cleanup (preserving workspace)...")
 
-                self.fman.cleanup_config_only()
+                self.fman.cleanup_runner_state()
             else:
                 logger.info("Runner is valid.")
 

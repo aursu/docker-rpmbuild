@@ -438,7 +438,7 @@ class TestRunnerServiceStartup(unittest.TestCase):
 
         self.fman.is_configured.assert_called()
         self.github.get_runner_status.assert_called_once_with("test-runner")
-        self.fman.cleanup_config_only.assert_not_called()
+        self.fman.cleanup_runner_state.assert_not_called()
         self.service.configure = MagicMock()
         self.service.configure.assert_not_called()
         self.service.run.assert_called_once()
@@ -454,7 +454,7 @@ class TestRunnerServiceStartup(unittest.TestCase):
 
         self.fman.is_configured.assert_called()
         self.github.get_runner_status.assert_called_once_with("test-runner")
-        self.fman.cleanup_config_only.assert_called_once()
+        self.fman.cleanup_runner_state.assert_called_once()
         self.service.configure.assert_called_once()
         self.service.run.assert_called_once()
 
@@ -482,7 +482,7 @@ class TestRunnerServiceStartup(unittest.TestCase):
 
         self.service.startup()
 
-        self.fman.cleanup_config_only.assert_not_called()
+        self.fman.cleanup_runner_state.assert_not_called()
 
         # Should proceed with running despite API failure
         self.service.run.assert_called_once()
