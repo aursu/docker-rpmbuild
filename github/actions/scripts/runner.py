@@ -13,7 +13,15 @@ ALGORITHM:
    - Set up directory paths (RUNNER_HOME, RUNNER_ROOT)
    - Validate Runner.Listener binary exists
 
-2. CONFIGURE MODE (./runner.py configure):
+2. STARTUP MODE (./runner.py startup or ./runner.py) [DEFAULT]:
+   - Smart idempotent entrypoint for containerized environments
+   - Check if local configuration exists (.runner, .credentials files)
+   - If configured: verify runner registration with GitHub API
+     - If orphaned (deleted from GitHub): cleanup local config and re-configure
+   - If not configured: run configure step
+   - Finally: run the runner listener
+   
+3. CONFIGURE MODE (./runner.py configure):
    - Create .env file with environment variables (LANG, JAVA_HOME, ANT_HOME, etc.)
    - Create .path file with current PATH
    - Fetch registration token (GITHUB_TOKEN or via GITHUB_PAT API call)
@@ -21,7 +29,7 @@ ALGORITHM:
               --name <name> --labels <labels> --work <work> [--runnergroup <group>]
               [--disableupdate] (if RUNNER_DISABLE_UPDATE is set)
 
-3. RUN MODE (./runner.py run or ./runner.py):
+4. RUN MODE (./runner.py run):
    - Set up signal handlers (SIGINT, SIGTERM) for graceful shutdown
    - Main run loop:
      a. Execute: bin/Runner.Listener run [arguments]
@@ -35,16 +43,17 @@ ALGORITHM:
      c. If interrupted by signal, exit gracefully
      d. Loop until exit condition met
 
-4. REMOVE/DELETE MODE (./runner.py remove or ./runner.py delete):
+5. REMOVE/DELETE MODE (./runner.py remove or ./runner.py delete):
    - Fetch removal token (GITHUB_TOKEN or via GITHUB_PAT API call)
    - Execute: bin/Runner.Listener remove --token <token>
 
 USAGE:
 ======
+  ./runner.py            - Same as 'startup' (default)
+  ./runner.py startup    - Idempotent start: verify, re-configure if needed, and run
   ./runner.py configure  - Configure and register runner
-  ./runner.py run        - Run the runner listener (default)
-  ./runner.py            - Same as 'run'
-  ./runner.py remove     - Remove/unregister runner
+  ./runner.py run        - Run the runner listener (without auto-configuration)
+  ./runner.py remove     - Unregister the runner
   ./runner.py delete     - Alias for 'remove'
 
 ENVIRONMENT VARIABLES:
