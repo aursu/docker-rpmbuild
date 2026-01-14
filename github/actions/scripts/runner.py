@@ -106,7 +106,13 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-__version__ = "1.0.0"
+try:
+    import jwt
+except ImportError:
+    print("ERROR: 'PyJWT' with crypto support is required for GitHub App auth.")
+    sys.exit(1)
+
+__version__ = "1.1.0"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -174,8 +180,16 @@ class Config:
     runner_root: Path = field(default_factory=lambda: Path(os.getenv("RUNNER_ROOT", "/usr/local/runner")))
 
     github_url: Optional[str] = field(default_factory=lambda: os.getenv("GITHUB_URL"))
+
+    # 1. Registration/Removal Token
     github_token: Optional[str] = field(default_factory=lambda: os.getenv("GITHUB_TOKEN"))
+
+    # 2. Personal Access Token
     github_pat: Optional[str] = field(default_factory=lambda: os.getenv("GITHUB_PAT"))
+
+    # 3. GitHub App (Client ID + Private Key)
+    client_id: Optional[str] = field(default_factory=lambda: os.getenv("GITHUB_CLIENT_ID"))
+    app_key_path: Optional[str] = field(default_factory=lambda: os.getenv("GITHUB_APP_KEY_PATH"))
 
     api_retries: int = int(os.getenv("GITHUB_API_RETRIES", "3"))
     api_backoff: float = float(os.getenv("GITHUB_API_BACKOFF", "1.5"))
@@ -205,8 +219,16 @@ class Config:
         """Validates critical configuration presence."""
         if not self.github_url:
             raise RunnerError("GITHUB_URL environment variable is required.")
-        if not self.github_token and not self.github_pat:
-            raise RunnerError("Either GITHUB_TOKEN or GITHUB_PAT must be provided.")
+
+        has_token = bool(self.github_token)
+        has_pat = bool(self.github_pat)
+        has_app = bool(self.client_id and self.app_key_path)
+
+        if not any([has_token, has_pat, has_app]):
+            raise RunnerError("Auth required: Provide GITHUB_TOKEN, GITHUB_PAT, or (GITHUB_CLIENT_ID + GITHUB_APP_KEY_PATH).")
+
+        if has_app and not Path(self.app_key_path).exists():
+             raise RunnerError(f"Private Key not found at: {self.app_key_path}")
 
         # Validate Runner Name
         if not self.NAME_PATTERN.match(self.runner_name):
@@ -233,6 +255,60 @@ class Config:
                         f"Invalid label '{label}' in RUNNER_LABELS. "
                         "Allowed characters: a-z, A-Z, 0-9, '-', '_', '.'"
                     )
+class GitHubAppAuthenticator:
+    """
+    Handles RSA signing for GitHub App Authentication.
+    Robust: Handles missing keys gracefully even without external validation.
+    """
+    def __init__(self, config: Config):
+        self.client_id = config.client_id
+        self.key_path = config.private_key_path
+
+        self._key_cache: Optional[bytes] = None
+        self._is_ready = False
+
+        if self.client_id and self.key_path:
+            try:
+                self._load_key()
+                self._is_ready = True
+            except Exception as e:
+                logger.error(f"GitHub App Auth initialization failed: {e}")
+
+    @property
+    def is_available(self) -> bool:
+        """Returns True ONLY if configuration is valid AND key is loaded."""
+        return self._is_ready and self._key_cache is not None
+
+    def _load_key(self):
+        """Loads private key into memory. Raises errors if something is wrong."""
+        path_obj = Path(self.key_path)
+        if not path_obj.exists():
+            raise FileNotFoundError(f"Private Key file not found at: {self.key_path}")
+
+        try:
+            with path_obj.open('rb') as f:
+                self._key_cache = f.read()
+        except OSError as e:
+            raise RunnerError(f"Could not read key file (permission denied?): {e}")
+
+    def generate_jwt(self) -> str:
+        """Sign a JWT using Client ID as Issuer."""
+        if not self.is_available:
+            raise RunnerError("Cannot generate JWT: App Auth is not ready (check logs for init errors).")
+
+        payload = {
+            'iat': int(time.time()),
+            'exp': int(time.time()) + 600,
+            'iss': self.client_id
+        }
+
+        try:
+            encoded_jwt = jwt.encode(payload, self._key_cache, algorithm='RS256')
+            if isinstance(encoded_jwt, bytes):
+                return encoded_jwt.decode('utf-8')
+            return encoded_jwt
+        except Exception as e:
+            raise RunnerError(f"JWT Signing failed: {e}")
 
 # --- Components ---
 class FileSystemManager:
@@ -460,6 +536,7 @@ class GitHubClient:
 
     def __init__(self, config: Config):
         self.config = config
+        self.app_auth = GitHubAppAuthenticator(config)
 
     def _build_endpoint(self, path_suffix: str) -> str:
         """
