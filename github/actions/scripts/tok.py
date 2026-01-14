@@ -11,20 +11,21 @@ def main():
     parser.add_argument(
         '--pem', '-p',
         required=True,
-        help='Path of private PEM file',
+        default=os.environ.get('GITHUB_APP_KEY_PATH'),
+        help='Path of private PEM file (can also be set via GITHUB_APP_KEY_PATH env var)',
     )
 
     parser.add_argument(
         '--client-id', '-c',
         required=False,
-        default=os.environ.get('CLIENT_ID'),
-        help='GitHub Client ID (can also be set via CLIENT_ID env var)',
+        default=os.environ.get('GITHUB_CLIENT_ID'),
+        help='GitHub Client ID (can also be set via GITHUB_CLIENT_ID env var)',
     )
 
     args = parser.parse_args()
 
     if not args.client_id:
-        parser.error("Client ID is required. Please provide --client-id flag or set CLIENT_ID environment variable.")
+        parser.error("Client ID is required. Please provide --client-id flag or set GITHUB_CLIENT_ID environment variable.")
 
     # Проверка существования файла
     if not os.path.exists(args.pem):

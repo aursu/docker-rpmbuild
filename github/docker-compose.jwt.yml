@@ -11,9 +11,11 @@ services:
     env_file:
       - secrets/jwt.env
       - secrets/github.env
+    environment:
+      - GITHUB_APP_KEY_PATH=/run/secrets/github_key
     secrets:
       - github_key
-    command: /usr/local/runner/tok.py --pem /run/secrets/github_key
+    command: /usr/local/runner/tok.py
 
 secrets:
   github_key:
