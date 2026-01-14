@@ -1,2 +1,5 @@
 # Python cache files
 __pycache__
+github/secrets/github.env
+github/secrets/jwt.env
+github/secrets/private-key.pem

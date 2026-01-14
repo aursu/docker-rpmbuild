@@ -50,6 +50,7 @@ RUN dnf -y install --enablerepo=crb \
         tar \
         unzip \
         python3.12 \
+        python3-jwt+crypto \
     && dnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
 
 # Setup User and Groups
@@ -63,6 +64,7 @@ WORKDIR $dest
 # Use ARG (build-time) for COPY since path is fixed at build time
 COPY --chmod=755 scripts/check.sh $dest/check.sh
 COPY --chmod=755 scripts/runner.py $dest/runner.py
+COPY --chmod=755 scripts/tok.py $dest/tok.py
 
 RUN chown -R $user:$group $dest
 
@@ -86,4 +88,4 @@ RUN set -ex \
 
 # Final Setup
 WORKDIR $home
-CMD ["/usr/local/runner/runner.py", "run"]
+CMD ["/usr/local/runner/runner.py", "startup"]

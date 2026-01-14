@@ -1,0 +1,20 @@
+services:
+  githubjwt:
+    image: "ghcr.io/aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
+    build:
+      context: actions
+      args:
+        rocky: $RL10
+        image: docker-${DOCKER}
+        RUNNER_VERSION: $GITHUB_RUNNER_TAG
+        RUNNER_CHECKSUM: $GITHUB_RUNNER_SHA256
+    env_file:
+      - secrets/jwt.env
+      - secrets/github.env
+    secrets:
+      - github_key
+    command: /usr/local/runner/tok.py --pem /run/secrets/github_key
+
+secrets:
+  github_key:
+    file: ./secrets/private-key.pem
