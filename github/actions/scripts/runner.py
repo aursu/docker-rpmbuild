@@ -556,17 +556,6 @@ class GitHubClient:
         else:
             raise RunnerError(f"Invalid GITHUB_URL: {self.config.github_url}")
 
-    def _build_endpoint(self, path_suffix: str) -> str:
-        """
-        Constructs the full API URL based on the configured GITHUB_URL.
-        Helper to avoid code duplication between get_token and get_runner_status.
-        """
-        api_base, owner, repo = self._parse_url_scope()
-
-        scope: str = f"repos/{owner}/{repo}" if repo else f"orgs/{owner}"
-
-        return f"{api_base}/{scope}/{path_suffix}"
-
     # Network operation helper method decorated with retry logic
     # The RetryPolicy decorator intercepts URLError/HTTPError exceptions and performs automatic retries
     @RetryPolicy()
@@ -665,11 +654,23 @@ class GitHubClient:
             logger.info(f"Using provided GITHUB_TOKEN for {action}.")
             return self.config.github_token
 
+        auth_token = None
+        # App Auth
+        if self.app_auth.is_available:
+            auth_token = self._get_app_installation_token()
+        # PAT (Fallback)
+        elif self.config.github_pat:
+            auth_token = self.config.github_pat
+        else:
+            raise RunnerError("Authentication not configured.")
+
         logger.info(f"Requesting {action} token via API...")
 
-        # All complexity is delegated to _execute_api_call
-        # Any errors will be raised as RunnerError
-        data = self._execute_api_call(f"actions/runners/{action}-token", method="POST")
+        api_base, owner, repo = self._parse_url_scope()
+        scope = f"repos/{owner}/{repo}" if repo else f"orgs/{owner}"
+
+        url = f"{api_base}/{scope}/actions/runners/{action}-token"
+        data = self._execute_api_call(url, method="POST", auth_token=auth_token)
 
         return data["token"]
 
@@ -678,16 +679,21 @@ class GitHubClient:
         Checks if a runner is registered.
         Returns True if found OR if verification fails (fail-safe).
         """
-        if not self.config.github_pat:
-            logger.warning("Skipping status check: No PAT provided.")
-            return True
+        if not (self.config.github_pat or self.app_auth.is_available):
+            logger.warning("Skipping status check: No PAT or App Auth available.")
+            return True # Fail-safe
 
         try:
-            # Search for runner (per_page=100 for reliability)
-            data = self._execute_api_call("actions/runners", method="GET", params="per_page=100")
+            auth_token = self._get_app_installation_token() if self.app_auth.is_available else self.config.github_pat
 
-            runners = data.get("runners", [])
-            for r in runners:
+            api_base, owner, repo = self._parse_url_scope()
+
+            scope = f"repos/{owner}/{repo}" if repo else f"orgs/{owner}"
+            url = f"{api_base}/{scope}/actions/runners?per_page=100"
+
+            data = self._execute_api_call(url, method="GET", auth_token=auth_token)
+
+            for r in data.get("runners", []):
                 if r.get("name") == runner_name:
                     logger.info(f"Runner found: ID={r.get('id')}, Status={r.get('status')}")
                     return True
