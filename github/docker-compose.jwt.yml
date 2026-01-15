@@ -16,6 +16,30 @@ services:
     secrets:
       - github_key
     command: /usr/local/runner/tok.py
+  githubrunner:
+    image: "ghcr.io/aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
+    command: /usr/local/runner/runner.py
+    env_file:
+      - secrets/jwt.env
+      - secrets/github.env
+    secrets:
+      - github_key
+    environment:
+      RUNNER_NAME: github-actions-runner-5dcba36ba388
+      DOCKER_TLS_CERTDIR: /certs
+      DOCKER_CERT_PATH: /certs/client
+      DOCKER_TLS_VERIFY: 1
+      DOCKER_HOST: tcp://localhost:2376
+      GITHUB_APP_KEY_PATH: /run/secrets/github_key
+    volumes:
+      - githubrunner:/home/runner
+      - /etc/docker/certs.d:/etc/docker/certs.d
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/docker/tls:/certs/client
+
+volumes:
+  githubrunner:
+    name: githubrunner
 
 secrets:
   github_key:
