@@ -602,6 +602,17 @@ class GitHubClient:
         except (KeyError, json.JSONDecodeError) as e:
             raise RunnerError(f"Invalid API response: {str(e)}")
 
+    def _build_endpoint(self, path_suffix: str) -> str:
+        """
+        Constructs the full API URL based on the configured GITHUB_URL.
+        Helper to avoid code duplication between get_token and get_runner_status.
+        """
+        api_base, owner, repo = self._parse_url_scope()
+
+        scope: str = f"repos/{owner}/{repo}" if repo else f"orgs/{owner}"
+
+        return f"{api_base}/{scope}/{path_suffix}"
+
     # https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation
     # Get the ID of the installation that you want to authenticate as.
     # You can also use the REST API to find the ID for an installation of your app.
@@ -617,25 +628,16 @@ class GitHubClient:
         api_base, owner, repo = self._parse_url_scope()
 
         # Find the Installation ID
-        if repo:
-            # Enables an authenticated GitHub App to find the repository's installation information.
-            # The installation's account type will be either an organization or a user account, depending
-            # which account the repository belongs to.
-            url = f"{api_base}/repos/{owner}/{repo}/installation"
-            try:
-                installation_data = self._execute_api_call(url, auth_token=jwt_token)
-            except RunnerError:
+        url = self._build_endpoint("installation")
+        try:
+            installation_data = self._execute_api_call(url, auth_token=jwt_token)
+        except RunnerError:
+            if repo:
                 raise
-        else:
-            # Enables an authenticated GitHub App to find the organization's installation information.
-            url = f"{api_base}/orgs/{owner}/installation"
-            try:
-                installation_data = self._execute_api_call(url, auth_token=jwt_token)
-            except RunnerError:
-                logger.debug(f"Organization's installation not found for '{owner}', trying user’s installation...")
-                # Enables an authenticated GitHub App to find the user’s installation information.
-                url = f"{api_base}/users/{owner}/installation"
-                installation_data = self._execute_api_call(url, auth_token=jwt_token)
+            logger.debug(f"Organization's installation not found for '{owner}', trying user’s installation...")
+            # Enables an authenticated GitHub App to find the user’s installation information.
+            url = f"{api_base}/users/{owner}/installation"
+            installation_data = self._execute_api_call(url, auth_token=jwt_token)
 
         installation_id = installation_data['id']
         logger.info(f"Installation ID found: {installation_id}")
@@ -666,10 +668,8 @@ class GitHubClient:
 
         logger.info(f"Requesting {action} token via API...")
 
-        api_base, owner, repo = self._parse_url_scope()
-        scope = f"repos/{owner}/{repo}" if repo else f"orgs/{owner}"
+        url = self._build_endpoint(f"actions/runners/{action}-token")
 
-        url = f"{api_base}/{scope}/actions/runners/{action}-token"
         data = self._execute_api_call(url, method="POST", auth_token=auth_token)
 
         return data["token"]
@@ -686,12 +686,8 @@ class GitHubClient:
         try:
             auth_token = self._get_app_installation_token() if self.app_auth.is_available else self.config.github_pat
 
-            api_base, owner, repo = self._parse_url_scope()
-
-            scope = f"repos/{owner}/{repo}" if repo else f"orgs/{owner}"
-            url = f"{api_base}/{scope}/actions/runners?per_page=100"
-
-            data = self._execute_api_call(url, method="GET", auth_token=auth_token)
+            url = self._build_endpoint("actions/runners")
+            data = self._execute_api_call(url, method="GET", params="per_page=100", auth_token=auth_token)
 
             for r in data.get("runners", []):
                 if r.get("name") == runner_name:
