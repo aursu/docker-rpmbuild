@@ -186,10 +186,11 @@ class TestRunnerServiceExec(unittest.TestCase):
         self.assertIn("Error: Configuration failed", error_msg)
         self.assertIn("Invalid token provided", error_msg)
 
+    @patch('runner.logger')
     @patch('runner.subprocess.Popen')
     @patch('runner.select.select')
     @patch('runner.time.time')
-    def test_exec_timeout_handling(self, mock_time, mock_select, mock_popen):
+    def test_exec_timeout_handling(self, mock_time, mock_select, mock_popen, _):
         """Test timeout handling terminates process and returns correct exit code"""
         # Configure mock process to exceed timeout duration
         mock_proc = MagicMock()

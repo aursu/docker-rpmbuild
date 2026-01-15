@@ -317,7 +317,8 @@ class TestGitHubClientExecuteApiCall(unittest.TestCase):
         mock_response.__enter__.return_value = mock_response
         mock_urlopen.return_value = mock_response
 
-        result = self.client._execute_api_call("actions/runners", method="GET")
+        url = self.client._build_endpoint("actions/runners")
+        result = self.client._execute_api_call(url, method="GET")
 
         self.assertEqual(result, {"runners": []})
         mock_urlopen.assert_called_once()
@@ -330,7 +331,8 @@ class TestGitHubClientExecuteApiCall(unittest.TestCase):
         mock_response.__enter__.return_value = mock_response
         mock_urlopen.return_value = mock_response
 
-        result = self.client._execute_api_call("actions/runners/registration-token", method="POST")
+        url = self.client._build_endpoint("actions/runners/registration-token")
+        result = self.client._execute_api_call(url, method="POST")
 
         self.assertEqual(result, {"token": "test_token"})
 
@@ -354,7 +356,8 @@ class TestGitHubClientExecuteApiCall(unittest.TestCase):
         mock_response.__enter__.return_value = mock_response
         mock_urlopen.return_value = mock_response
 
-        self.client._execute_api_call("actions/runners", method="GET", params="per_page=100")
+        url = self.client._build_endpoint("actions/runners")
+        self.client._execute_api_call(url, method="GET", params="per_page=100")
 
         # Verify URL contains parameters
         args, _ = mock_urlopen.call_args
@@ -369,7 +372,8 @@ class TestGitHubClientExecuteApiCall(unittest.TestCase):
         mock_urlopen.side_effect = error
 
         with self.assertRaises(runner.RunnerError) as cm:
-            self.client._execute_api_call("actions/runners", method="GET")
+            url = self.client._build_endpoint("actions/runners")
+            self.client._execute_api_call(url, method="GET")
 
         self.assertIn("Invalid GITHUB_PAT", str(cm.exception))
 
@@ -380,18 +384,21 @@ class TestGitHubClientExecuteApiCall(unittest.TestCase):
         mock_urlopen.side_effect = error
 
         with self.assertRaises(runner.RunnerError) as cm:
-            self.client._execute_api_call("actions/runners", method="GET")
+            url = self.client._build_endpoint("actions/runners")
+            self.client._execute_api_call(url, method="GET")
 
         self.assertIn("Resource not found", str(cm.exception))
         self.assertIn("404", str(cm.exception))
 
+    @patch('runner.time.sleep')
     @patch('runner.urlopen')
-    def test_execute_api_call_network_error(self, mock_urlopen):
+    def test_execute_api_call_network_error(self, mock_urlopen, _):
         """Test network error handling"""
         mock_urlopen.side_effect = URLError("Connection refused")
 
         with self.assertRaises(runner.RunnerError) as cm:
-            self.client._execute_api_call("actions/runners", method="GET")
+            url = self.client._build_endpoint("actions/runners")
+            self.client._execute_api_call(url, method="GET")
 
         self.assertIn("Network error connecting to GitHub", str(cm.exception))
 
@@ -404,7 +411,8 @@ class TestGitHubClientExecuteApiCall(unittest.TestCase):
         mock_urlopen.return_value = mock_response
 
         with self.assertRaises(runner.RunnerError) as cm:
-            self.client._execute_api_call("actions/runners", method="GET")
+            url = self.client._build_endpoint("actions/runners")
+            self.client._execute_api_call(url, method="GET")
 
         self.assertIn("Invalid API response", str(cm.exception))
 
@@ -414,9 +422,10 @@ class TestGitHubClientExecuteApiCall(unittest.TestCase):
         self.client.config.github_pat = None
 
         with self.assertRaises(runner.RunnerError) as cm:
-            self.client._execute_api_call("actions/runners", method="GET")
+            url = self.client._build_endpoint("actions/runners")
+            self.client._execute_api_call(url, method="GET")
 
-        self.assertIn("GITHUB_PAT is required", str(cm.exception))
+        self.assertIn("PAT missing, App Auth not used", str(cm.exception))
 
 class TestRunnerServiceStartup(unittest.TestCase):
     """Tests for the startup method"""

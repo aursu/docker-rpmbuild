@@ -73,7 +73,8 @@ class TestSecuritySanitization(unittest.TestCase):
         mock_popen.return_value.__exit__.return_value = None
 
         # Configure time progression to trigger timeout
-        mock_time.side_effect = [0.0, 5.0, 15.0]
+        # 20.0 - logger.error inside subprocess.TimeoutExpired handling uses time.time()
+        mock_time.side_effect = [0.0, 5.0, 15.0, 20.0]
 
         # Configure select to indicate output stream has data available
         mock_select.return_value = ([1], [], [])
