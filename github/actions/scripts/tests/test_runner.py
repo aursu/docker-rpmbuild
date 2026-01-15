@@ -102,7 +102,7 @@ class TestGitHubClient(unittest.TestCase):
 
         req_obj = mock_req.return_value
         req_obj.add_header.assert_any_call("Authorization", "Bearer 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")
-        req_obj.add_header.assert_any_call("User-Agent", "RunnerController/1.0.0 (Python 3.12.5; Linux)")
+        req_obj.add_header.assert_any_call("User-Agent", "RunnerController/1.1.0 (Python 3.12.5; Linux)")
 
     @patch('runner.urlopen')
     @patch('runner.time.sleep')  # Mock sleep to make tests run instantly
