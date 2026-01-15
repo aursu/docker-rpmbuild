@@ -578,7 +578,7 @@ class GitHubClient:
 
         # Create the request
         req = Request(url, method=method)
-        req.add_header("Authorization", f"Bearer {self.config.github_pat}")
+        req.add_header("Authorization", f"Bearer {token}")
         req.add_header("Accept", "application/vnd.github+json")
         req.add_header("X-GitHub-Api-Version", "2022-11-28")
 
