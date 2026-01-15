@@ -427,6 +427,292 @@ class TestGitHubClientExecuteApiCall(unittest.TestCase):
 
         self.assertIn("PAT missing, App Auth not used", str(cm.exception))
 
+
+class TestGitHubClientAppAuth(unittest.TestCase):
+    """Tests for GitHub App Authentication functionality"""
+
+    def setUp(self):
+        self.config = MagicMock()
+        self.config.github_url = "https://github.com/rpmbsys"
+        self.config.github_pat = None
+        self.config.github_token = None
+        self.config.api_retries = 3
+        self.config.api_backoff = 1.5
+        self.client = runner.GitHubClient(self.config)
+
+    @patch('runner.urlopen')
+    def test_get_app_installation_token_org_success(self, mock_urlopen):
+        """
+        Test successful App installation token retrieval (Low Level / urlopen mock).
+        """
+        # 1. Локальная настройка App Auth только для этого теста
+        self.client.app_auth = MagicMock()
+        self.client.app_auth.is_available = True
+        self.client.app_auth.generate_jwt.return_value = "jwt.test.token"
+
+        # 2. Настройка ответов сети (Context Managers для urlopen)
+        # Ответ 1: Installation ID
+        resp_inst = MagicMock()
+        resp_inst.read.return_value = json.dumps({"id": 12345}).encode()
+        cm_inst = MagicMock()
+        cm_inst.__enter__.return_value = resp_inst
+
+        # Ответ 2: Access Token
+        resp_token = MagicMock()
+        resp_token.read.return_value = json.dumps({"token": "ghs_final_token"}).encode()
+        cm_token = MagicMock()
+        cm_token.__enter__.return_value = resp_token
+
+        # Устанавливаем очередность ответов
+        mock_urlopen.side_effect = [cm_inst, cm_token]
+
+        # 3. Выполнение
+        token = self.client._get_app_installation_token()
+
+        # 4. Проверки
+        self.assertEqual(token, "ghs_final_token")
+
+        # Убеждаемся, что было ровно 2 вызова и сразу распаковываем их в переменные
+        self.assertEqual(mock_urlopen.call_count, 2)
+        call_install, call_token = mock_urlopen.call_args_list
+
+        # Анализ первого вызова (Installation Lookup)
+        req_install = call_install.args[0] # Достаем объект Request из аргументов
+        self.assertEqual(req_install.method, "GET")
+        self.assertIn("/orgs/rpmbsys/installation", req_install.full_url)
+        self.assertEqual(req_install.headers['Authorization'], "Bearer jwt.test.token")
+
+        # Анализ второго вызова (Token Exchange)
+        req_token = call_token.args[0] # Достаем объект Request из аргументов
+        self.assertEqual(req_token.method, "POST")
+        self.assertIn("/app/installations/12345/access_tokens", req_token.full_url)
+        self.assertEqual(req_token.headers['Authorization'], "Bearer jwt.test.token")
+
+    @patch('runner.urlopen')
+    def test_get_app_installation_token_repo_success(self, mock_urlopen):
+        """
+        Test successful App token retrieval for REPOSITORY scope (Low Level).
+        """
+        self.config.github_url = "https://github.com/rpmbsys/docker-rpmbuild"
+
+        self.client.app_auth = MagicMock()
+        self.client.app_auth.is_available = True
+        self.client.app_auth.generate_jwt.return_value = "jwt.repo.token"
+
+        resp_inst = MagicMock()
+        resp_inst.read.return_value = json.dumps({"id": 67890}).encode()
+
+        cm_inst = MagicMock()
+        cm_inst.__enter__.return_value = resp_inst
+
+        resp_token = MagicMock()
+        resp_token.read.return_value = json.dumps({"token": "ghs_repo_token_abc"}).encode()
+
+        cm_token = MagicMock()
+        cm_token.__enter__.return_value = resp_token
+
+        mock_urlopen.side_effect = [cm_inst, cm_token]
+
+        token = self.client._get_app_installation_token()
+
+        self.assertEqual(token, "ghs_repo_token_abc")
+
+        self.assertEqual(mock_urlopen.call_count, 2)
+        call_install, call_token = mock_urlopen.call_args_list
+
+        req_install = call_install.args[0]
+        self.assertEqual(req_install.method, "GET")
+
+        self.assertIn("/repos/rpmbsys/docker-rpmbuild/installation", req_install.full_url)
+        self.assertEqual(req_install.headers['Authorization'], "Bearer jwt.repo.token")
+
+        req_token = call_token.args[0]
+        self.assertEqual(req_token.method, "POST")
+        self.assertIn("/app/installations/67890/access_tokens", req_token.full_url)
+        self.assertEqual(req_token.headers['Authorization'], "Bearer jwt.repo.token")
+
+    @patch('runner.urlopen')
+    def test_get_app_installation_token_org_fallback_to_user(self, mock_urlopen):
+        """
+        Test Fallback logic: Org 404 -> User 200 -> Token 200.
+        """
+        self.client.app_auth = MagicMock()
+        self.client.app_auth.is_available = True
+        self.client.app_auth.generate_jwt.return_value = "jwt.fallback.token"
+
+        error_404 = HTTPError(
+            url="http://gh/orgs/rpmbsys/installation",
+            code=404, msg="Not Found", hdrs={}, fp=None
+        )
+
+        # Событие 2: Успех при поиске Пользователя
+        resp_user = MagicMock()
+        resp_user.read.return_value = json.dumps({"id": 11111}).encode()
+
+        cm_user = MagicMock()
+        cm_user.__enter__.return_value = resp_user
+
+        resp_token = MagicMock()
+        resp_token.read.return_value = json.dumps({"token": "ghs_user_final"}).encode()
+
+        cm_token = MagicMock()
+        cm_token.__enter__.return_value = resp_token
+
+        mock_urlopen.side_effect = [error_404, cm_user, cm_token]
+
+        token = self.client._get_app_installation_token()
+
+        self.assertEqual(token, "ghs_user_final")
+
+        self.assertEqual(mock_urlopen.call_count, 3)
+
+        call_fail, call_success, call_token = mock_urlopen.call_args_list
+
+        req_fail = call_fail.args[0]
+        self.assertIn("/orgs/rpmbsys/installation", req_fail.full_url)
+
+        req_success = call_success.args[0]
+        self.assertIn("/users/rpmbsys/installation", req_success.full_url)
+        self.assertEqual(req_success.headers['Authorization'], "Bearer jwt.fallback.token")
+
+        req_token = call_token.args[0]
+        self.assertIn("/app/installations/11111/access_tokens", req_token.full_url)
+
+    @patch('runner.urlopen')
+    def test_get_app_installation_token_repo_no_fallback(self, mock_urlopen):
+        """
+        Test that REPO scope causes immediate failure on 404 (No Fallback strategy).
+        """
+        self.config.github_url = "https://github.com/rpmbsys/docker-rpmbuild"
+
+        self.client.app_auth = MagicMock()
+        self.client.app_auth.is_available = True
+        self.client.app_auth.generate_jwt.return_value = "jwt.repo.token"
+
+        error_404 = HTTPError(
+            url="http://gh/repos/rpmbsys/docker-rpmbuild/installation",
+            code=404, msg="Not Found", hdrs={}, fp=None
+        )
+        mock_urlopen.side_effect = error_404
+
+        with self.assertRaises(runner.RunnerError):
+            self.client._get_app_installation_token()
+
+        self.assertEqual(mock_urlopen.call_count, 1)
+
+        single_call_args = mock_urlopen.call_args
+        req = single_call_args.args[0]
+
+        self.assertIn("/repos/rpmbsys/docker-rpmbuild/installation", req.full_url)
+
+    @patch('runner.urlopen')
+    @patch.object(runner.GitHubClient, '_get_app_installation_token')
+    def test_get_token_uses_app_auth_when_available(self, mock_get_app_token, mock_urlopen):
+        """
+        Test that get_token retrieves an App Token and puts it into the HTTP Header (Low Level).
+        """
+        # 1. Настройка: App Auth доступен
+        self.client.app_auth = MagicMock()
+        self.client.app_auth.is_available = True
+
+        # Пусть helper вернет нам промежуточный токен (мы не тестируем здесь сам helper, только его использование)
+        mock_get_app_token.return_value = "ghs_intermediate_token"
+
+        # 2. Настройка сети для финального запроса (Registration Token)
+        resp = MagicMock()
+        resp.read.return_value = json.dumps({"token": "FINAL_REG_TOKEN"}).encode()
+
+        cm = MagicMock()
+        cm.__enter__.return_value = resp
+        mock_urlopen.return_value = cm
+
+        token = self.client.get_token("registration")
+
+        self.assertEqual(token, "FINAL_REG_TOKEN")
+
+        mock_get_app_token.assert_called_once()
+
+        self.assertEqual(mock_urlopen.call_count, 1)
+        (req, ), _ = mock_urlopen.call_args
+
+        self.assertIn("/actions/runners/registration-token", req.full_url)
+
+        self.assertEqual(req.headers['Authorization'], "Bearer ghs_intermediate_token")
+
+    @patch('runner.urlopen')
+    def test_get_token_fallback_to_pat_low_level(self, mock_urlopen):
+        """
+        Verify that `get_token` correctly falls back to using the Personal Access Token (PAT)
+        in HTTP headers when GitHub App Authentication is unavailable.
+        """
+        # 1. Configuration: Disable App Auth and ensure PAT availability.
+        self.config.github_pat = "ghp_pat_token_xyz"
+
+        # Explicitly mock the app_auth dependency to simulate an unavailable state,
+        # ensuring the fallback logic is triggered.
+        self.client.app_auth = MagicMock()
+        self.client.app_auth.is_available = False
+
+        # 2. Network Simulation: Mock the HTTP response lifecycle.
+        resp = MagicMock()
+        resp.read.return_value = json.dumps({"token": "REAL_REMOVAL_TOKEN"}).encode()
+
+        cm = MagicMock()
+        cm.__enter__.return_value = resp
+        mock_urlopen.return_value = cm
+
+        # 3. Execution: Invoke the token retrieval method.
+        # CORRECTION: The argument must be "remove" to match the API endpoint /remove-token
+        token = self.client.get_token("remove")
+
+        # 4. Assertion: Verify the returned token matches the mocked response.
+        self.assertEqual(token, "REAL_REMOVAL_TOKEN")
+
+        # 5. Low-Level Verification: Inspect the `urllib.request.Request` object.
+        # Ensure that exactly one network request was initiated.
+        self.assertEqual(mock_urlopen.call_count, 1)
+        (req, ), _ = mock_urlopen.call_args
+
+        # Validation: Ensure the URL targets the correct 'remove-token' endpoint.
+        self.assertIn("/actions/runners/remove-token", req.full_url)
+
+        # CRITICAL: Verify that the 'Authorization' header was constructed using
+        # the Personal Access Token (PAT) and not an App token or None.
+        self.assertEqual(req.headers['Authorization'], "Bearer ghp_pat_token_xyz")
+
+    @patch('runner.logger')
+    def test_get_token_no_auth_configured(self, mock_logger):
+        """
+        Verify that `get_token` raises a `RunnerError` when no valid authentication
+        mechanism (neither GitHub App nor Personal Access Token) is configured.
+        """
+        # 1. Configuration: Ensure both App Auth and PAT are explicitly disabled.
+        self.client.app_auth = MagicMock()
+        self.client.app_auth.is_available = False
+        self.config.github_pat = None
+
+        # 2. Execution & Assertion: Verify that the operation fails with the expected exception.
+        with self.assertRaises(runner.RunnerError) as cm:
+            self.client.get_token("registration")
+
+        # 3. Validation: specific error message indicates the missing configuration.
+        self.assertIn("Authentication not configured", str(cm.exception))
+
+    @patch('runner.logger')
+    def test_get_token_uses_github_token_directly(self, mock_logger):
+        """
+        Verify that `get_token` returns the pre-configured `GITHUB_TOKEN` immediately,
+        bypassing any API interaction or authentication handshake.
+        """
+        # 1. Configuration: Inject a static registration token into the configuration.
+        self.config.github_token = "direct_token_abc"
+
+        # 2. Execution: Invoke the token retrieval method.
+        token = self.client.get_token("registration")
+
+        # 3. Assertion: Confirm that the returned token matches the configuration value exactly.
+        self.assertEqual(token, "direct_token_abc")
+
 class TestRunnerServiceStartup(unittest.TestCase):
     """Tests for the startup method"""
 
