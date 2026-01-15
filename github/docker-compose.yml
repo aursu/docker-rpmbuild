@@ -48,6 +48,12 @@ services:
       - /etc/docker/certs.d:/etc/docker/certs.d
       - /var/run/docker.sock:/var/run/docker.sock
       - /etc/docker/tls:/certs/client
+  runnertest:
+    image: "ghcr.io/aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
+    command: /usr/bin/python3 -m unittest discover tests/ -v
+    volumes:
+      - ./actions/scripts/tests:/usr/local/runner/tests
+    working_dir: /usr/local/runner
 
 volumes:
   githubrunner:
