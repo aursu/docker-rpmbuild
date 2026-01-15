@@ -262,7 +262,7 @@ class GitHubAppAuthenticator:
     """
     def __init__(self, config: Config):
         self.client_id = config.client_id
-        self.key_path = config.private_key_path
+        self.key_path = config.app_key_path
 
         self._key_cache: Optional[bytes] = None
         self._is_ready = False
