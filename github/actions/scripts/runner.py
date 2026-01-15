@@ -538,21 +538,9 @@ class GitHubClient:
         self.config = config
         self.app_auth = GitHubAppAuthenticator(config)
 
-    def _build_endpoint(self, path_suffix: str) -> str:
-        """
-        Constructs the full API URL based on the configured GITHUB_URL.
-        Helper to avoid code duplication between get_token and get_runner_status.
-        """
+    def _parse_url_scope(self) -> tuple[str, str, Optional[str]]:
         parsed = urlparse(self.config.github_url)
         parts: List[str] = [p for p in parsed.path.split('/') if p]
-
-        scope: str = ""
-        if len(parts) == 1:
-            scope = f"orgs/{parts[0]}"
-        elif len(parts) >= 2:
-            scope = f"repos/{parts[0]}/{parts[1]}"
-        else:
-            raise RunnerError(f"Invalid GITHUB_URL format: {self.config.github_url}")
 
         api_base: str
         if parsed.hostname == "github.com":
@@ -560,6 +548,22 @@ class GitHubClient:
         else:
             # For GHES (Enterprise)
             api_base = f"{parsed.scheme}://{parsed.netloc}/api/v3"
+
+        if len(parts) == 1:
+            return api_base, parts[0], None # Org scope
+        elif len(parts) >= 2:
+            return api_base, parts[0], parts[1] # Repo scope
+        else:
+            raise RunnerError(f"Invalid GITHUB_URL: {self.config.github_url}")
+
+    def _build_endpoint(self, path_suffix: str) -> str:
+        """
+        Constructs the full API URL based on the configured GITHUB_URL.
+        Helper to avoid code duplication between get_token and get_runner_status.
+        """
+        api_base, owner, repo = self._parse_url_scope()
+
+        scope: str = f"repos/{owner}/{repo}" if repo else f"orgs/{owner}"
 
         return f"{api_base}/{scope}/{path_suffix}"
 
@@ -570,22 +574,20 @@ class GitHubClient:
         with urlopen(req, timeout=30) as resp:
             return resp.read()
 
-    def _execute_api_call(self, suffix: str, method: str = "GET", params: str = "") -> Any:
+    def _execute_api_call(self, url: str, method: str = "GET", params: str = "", auth_token: Optional[str] = None) -> Any:
         """
         Unified handler for API requests.
         Constructs URL -> Adds Auth Headers -> Sends Request -> Parses JSON.
         Handles all generic HTTP/Network errors by raising RunnerError.
         """
-        # 1. Проверка PAT
-        if not self.config.github_pat:
-             raise RunnerError("GITHUB_PAT is required for API interactions.")
+        token = auth_token or self.config.github_pat
+        if not token:
+             raise RunnerError("No auth token available (PAT missing, App Auth not used).")
 
-        # 2. Сборка URL
-        url = self._build_endpoint(suffix)
         if params:
             url += f"?{params}"
 
-        # 3. Создание запроса
+        # Create the request
         req = Request(url, method=method)
         req.add_header("Authorization", f"Bearer {self.config.github_pat}")
         req.add_header("Accept", "application/vnd.github+json")
@@ -594,11 +596,10 @@ class GitHubClient:
         user_agent = f"RunnerController/{__version__} (Python {platform.python_version()}; {platform.system()})"
         req.add_header("User-Agent", user_agent)
 
-        # 4. Выполнение и Централизованная обработка ошибок
+        # Execute request and handle errors
         try:
-            raw_response = self._send_request(req)
-            return json.loads(raw_response.decode())
-
+            # json.loads accepts bytes since Python 3.6, avoiding an explicit .decode() and saving memory
+            return json.loads(self._send_request(req))
         except HTTPError as e:
             if e.code == 401:
                 raise RunnerError("Invalid GITHUB_PAT (401 Unauthorized).")
@@ -611,6 +612,50 @@ class GitHubClient:
 
         except (KeyError, json.JSONDecodeError) as e:
             raise RunnerError(f"Invalid API response: {str(e)}")
+
+    # https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation
+    # Get the ID of the installation that you want to authenticate as.
+    # You can also use the REST API to find the ID for an installation of your app.
+    # You can get an installation ID with the GET /users/{username}/installation,
+    # GET /repos/{owner}/{repo}/installation,
+    # GET /orgs/{org}/installation endpoints.
+    def _get_app_installation_token(self) -> str:
+        logger.info("Authenticating via GitHub App (Client ID)...")
+
+        # Generate JWT using the authenticator class
+        jwt_token = self.app_auth.generate_jwt()
+
+        api_base, owner, repo = self._parse_url_scope()
+
+        # Find the Installation ID
+        if repo:
+            # Enables an authenticated GitHub App to find the repository's installation information.
+            # The installation's account type will be either an organization or a user account, depending
+            # which account the repository belongs to.
+            url = f"{api_base}/repos/{owner}/{repo}/installation"
+            try:
+                installation_data = self._execute_api_call(url, auth_token=jwt_token)
+            except RunnerError:
+                raise
+        else:
+            # Enables an authenticated GitHub App to find the organization's installation information.
+            url = f"{api_base}/orgs/{owner}/installation"
+            try:
+                installation_data = self._execute_api_call(url, auth_token=jwt_token)
+            except RunnerError:
+                logger.debug(f"Organization's installation not found for '{owner}', trying user’s installation...")
+                # Enables an authenticated GitHub App to find the user’s installation information.
+                url = f"{api_base}/users/{owner}/installation"
+                installation_data = self._execute_api_call(url, auth_token=jwt_token)
+
+        installation_id = installation_data['id']
+        logger.info(f"Installation ID found: {installation_id}")
+
+        # Exchange JWT for an Access Token
+        access_tokens_url = f"{api_base}/app/installations/{installation_id}/access_tokens"
+        data = self._execute_api_call(access_tokens_url, method="POST", auth_token=jwt_token)
+
+        return data['token']
 
     def get_token(self, action: str) -> str:
         """
