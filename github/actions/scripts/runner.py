@@ -11,7 +11,7 @@ ALGORITHM:
 1. COMMON INITIALIZATION (all modes):
    - Verify not running as root (unless RUNNER_ALLOW_RUNASROOT is set)
    - Set up directory paths (RUNNER_HOME, RUNNER_ROOT)
-   - Validate Runner.Listener binary exists
+   - Validate Runner.Listener binary exists and is executable
 
 2. STARTUP MODE (./runner.py startup or ./runner.py) [DEFAULT]:
    - Smart idempotent entrypoint for containerized environments
@@ -24,19 +24,19 @@ ALGORITHM:
 3. CONFIGURE MODE (./runner.py configure):
    - Create .env file with environment variables (LANG, JAVA_HOME, ANT_HOME, etc.)
    - Create .path file with current PATH
-   - Fetch registration token (GITHUB_TOKEN or via GITHUB_PAT API call)
-   - Execute: bin/Runner.Listener configure --unattended --token <token> --url <url> 
-              --name <name> --labels <labels> --work <work> [--runnergroup <group>]
-              [--disableupdate] (if RUNNER_DISABLE_UPDATE is set)
+   - Fetch registration token via authentication chain (see below)
+   - Execute: bin/Runner.Listener configure --unattended --replace --token <token> 
+              --url <url> --name <name> --labels <labels> --work <work> 
+              [--runnergroup <group>] [--disableupdate]
 
 4. RUN MODE (./runner.py run):
    - Set up signal handlers (SIGINT, SIGTERM) for graceful shutdown
    - Main run loop:
-     a. Execute: bin/Runner.Listener run [arguments]
+     a. Execute: bin/Runner.Listener run
      b. Handle return codes:
         - 0: Normal exit, stop service
         - 1: Terminated error, stop service
-        - 2: Retryable error, sleep 5 seconds and restart
+        - 2: Retryable error, sleep RUNNER_RETRY_DELAY seconds and restart
         - 3/4: Update requested, exit (container should be rebuilt with new runner)
         - 5: Session conflict, stop service
         - Other: Unknown error, stop service
@@ -44,8 +44,15 @@ ALGORITHM:
      d. Loop until exit condition met
 
 5. REMOVE/DELETE MODE (./runner.py remove or ./runner.py delete):
-   - Fetch removal token (GITHUB_TOKEN or via GITHUB_PAT API call)
+   - Fetch removal token via authentication chain (see below)
    - Execute: bin/Runner.Listener remove --token <token>
+
+AUTHENTICATION CHAIN:
+=====================
+  Token acquisition follows this priority order:
+  1. GITHUB_TOKEN     - Pre-generated registration/removal token (direct use)
+  2. GitHub App       - GITHUB_CLIENT_ID + GITHUB_APP_KEY_PATH (JWT -> Installation Token)
+  3. GITHUB_PAT       - Personal Access Token (direct API call)
 
 USAGE:
 ======
@@ -58,19 +65,32 @@ USAGE:
 
 ENVIRONMENT VARIABLES:
 ======================
-  RUNNER_HOME              - Runner home directory (default: /home/runner)
+  # Directories
+  RUNNER_HOME              - Runner home/persistent directory (default: /home/runner)
   RUNNER_ROOT              - Runner installation root (default: /usr/local/runner)
-  RUNNER_ALLOW_RUNASROOT   - Allow running as root (set to any value)
-  RUNNER_DISABLE_UPDATE    - Disable runner self-updates (recommended for containers)
-  
-  # Configuration
+
+  # Authentication (at least one required)
   GITHUB_URL               - GitHub instance URL (required)
   GITHUB_TOKEN             - Pre-generated registration/removal token (priority 1)
-  GITHUB_PAT               - Personal Access Token for token generation (priority 2)
+  GITHUB_CLIENT_ID         - GitHub App Client ID (priority 2, requires APP_KEY_PATH)
+  GITHUB_APP_KEY_PATH      - Path to GitHub App private key PEM file (priority 2)
+  GITHUB_PAT               - Personal Access Token for token generation (priority 3)
+
+  # Runner Configuration
   RUNNER_NAME              - Runner name (default: github-actions-runner-<hostname>)
   RUNNER_GROUP             - Runner group (default: Default)
   RUNNER_LABELS            - Runner labels (default: self-hosted,linux,x64)
   RUNNER_WORKSPACE         - Working directory (default: _work)
+
+  # Permissions & Updates
+  RUNNER_ALLOW_RUNASROOT   - Allow running as root (set to any value)
+  RUNNER_DISABLE_UPDATE    - Disable runner self-updates (recommended for containers)
+
+  # Timeouts & Retries
+  RUNNER_SETUP_TIMEOUT     - Timeout for configure/remove operations in seconds (default: 60)
+  RUNNER_RETRY_DELAY       - Delay between retries on retryable errors (default: 5)
+  GITHUB_API_RETRIES       - Number of API retry attempts (default: 3)
+  GITHUB_API_BACKOFF       - Exponential backoff multiplier for retries (default: 1.5)
 
 UPDATE PREVENTION:
 ==================
