@@ -443,163 +443,223 @@ class TestGitHubClientAppAuth(unittest.TestCase):
     @patch('runner.urlopen')
     def test_get_app_installation_token_org_success(self, mock_urlopen):
         """
-        Test successful App installation token retrieval (Low Level / urlopen mock).
+        Verify the complete GitHub App authentication handshake for an Organization scope,
+        validating network requests at the transport layer.
         """
-        # 1. Локальная настройка App Auth только для этого теста
+        # 1. Configuration: Isolate and mock the App Authentication component
+        # to simulate valid JWT generation for this specific test case.
         self.client.app_auth = MagicMock()
         self.client.app_auth.is_available = True
         self.client.app_auth.generate_jwt.return_value = "jwt.test.token"
 
-        # 2. Настройка ответов сети (Context Managers для urlopen)
-        # Ответ 1: Installation ID
+        # 2. Network Simulation: Configure mock responses for the sequential API calls.
+
+        # Response 1: Installation Lookup (GET). Returns the Installation ID.
         resp_inst = MagicMock()
         resp_inst.read.return_value = json.dumps({"id": 12345}).encode()
         cm_inst = MagicMock()
         cm_inst.__enter__.return_value = resp_inst
 
-        # Ответ 2: Access Token
+        # Response 2: Token Exchange (POST). Returns the ephemeral Access Token.
         resp_token = MagicMock()
         resp_token.read.return_value = json.dumps({"token": "ghs_final_token"}).encode()
         cm_token = MagicMock()
         cm_token.__enter__.return_value = resp_token
 
-        # Устанавливаем очередность ответов
+        # Define the sequence of side effects for the mocked urlopen callable.
         mock_urlopen.side_effect = [cm_inst, cm_token]
 
-        # 3. Выполнение
+        # 3. Execution: Initiate the token retrieval workflow.
         token = self.client._get_app_installation_token()
 
-        # 4. Проверки
+        # 4. Assertion: Validate the returned token matches the expected Access Token.
         self.assertEqual(token, "ghs_final_token")
 
-        # Убеждаемся, что было ровно 2 вызова и сразу распаковываем их в переменные
+        # 5. Low-Level Verification: Assert exactly two network requests occurred
+        # and unpack the call arguments for detailed inspection.
         self.assertEqual(mock_urlopen.call_count, 2)
         call_install, call_token = mock_urlopen.call_args_list
 
-        # Анализ первого вызова (Installation Lookup)
-        req_install = call_install.args[0] # Достаем объект Request из аргументов
+        # Inspection: First Request (Installation Lookup)
+        # Extract the urllib.request.Request object from the call arguments.
+        req_install = call_install.args[0]
         self.assertEqual(req_install.method, "GET")
         self.assertIn("/orgs/rpmbsys/installation", req_install.full_url)
+        # Critical: Ensure the JWT is used for authentication.
         self.assertEqual(req_install.headers['Authorization'], "Bearer jwt.test.token")
 
-        # Анализ второго вызова (Token Exchange)
-        req_token = call_token.args[0] # Достаем объект Request из аргументов
+        # Inspection: Second Request (Access Token Exchange)
+        req_token = call_token.args[0]
         self.assertEqual(req_token.method, "POST")
         self.assertIn("/app/installations/12345/access_tokens", req_token.full_url)
+        # Critical: Ensure the JWT is maintained for the second step.
         self.assertEqual(req_token.headers['Authorization'], "Bearer jwt.test.token")
 
     @patch('runner.urlopen')
     def test_get_app_installation_token_repo_success(self, mock_urlopen):
         """
-        Test successful App token retrieval for REPOSITORY scope (Low Level).
+        Verify the complete GitHub App authentication handshake for a Repository scope,
+        validating network requests at the transport layer.
         """
+        # 1. Configuration: Configure the client to target a specific repository scope.
+        # This dictates the discovery endpoint logic (switching from /orgs/ to /repos/).
         self.config.github_url = "https://github.com/rpmbsys/docker-rpmbuild"
 
+        # Isolate and mock the App Authentication component to simulate valid JWT generation.
         self.client.app_auth = MagicMock()
         self.client.app_auth.is_available = True
         self.client.app_auth.generate_jwt.return_value = "jwt.repo.token"
 
+        # 2. Network Simulation: Configure mock responses for the sequential API calls.
+
+        # Response 1: Installation Lookup (GET).
+        # Returns the Installation ID associated with the specific repository.
         resp_inst = MagicMock()
         resp_inst.read.return_value = json.dumps({"id": 67890}).encode()
-
         cm_inst = MagicMock()
         cm_inst.__enter__.return_value = resp_inst
 
+        # Response 2: Token Exchange (POST).
+        # Returns the ephemeral Access Token.
         resp_token = MagicMock()
         resp_token.read.return_value = json.dumps({"token": "ghs_repo_token_abc"}).encode()
-
         cm_token = MagicMock()
         cm_token.__enter__.return_value = resp_token
 
+        # Define the sequence of side effects for the mocked urlopen callable.
         mock_urlopen.side_effect = [cm_inst, cm_token]
 
+        # 3. Execution: Initiate the token retrieval workflow.
         token = self.client._get_app_installation_token()
 
+        # 4. Assertion: Validate the returned token matches the expected Access Token.
         self.assertEqual(token, "ghs_repo_token_abc")
 
+        # 5. Low-Level Verification: Assert exactly two network requests occurred
+        # and unpack the call arguments for detailed inspection.
         self.assertEqual(mock_urlopen.call_count, 2)
         call_install, call_token = mock_urlopen.call_args_list
 
+        # Inspection: First Request (Installation Lookup)
         req_install = call_install.args[0]
         self.assertEqual(req_install.method, "GET")
 
+        # Validation: Verify that the URL logic correctly identified the 'Repository' scope
+        # (targeting /repos/... instead of /orgs/...).
         self.assertIn("/repos/rpmbsys/docker-rpmbuild/installation", req_install.full_url)
+        # Critical: Ensure the JWT is used for authentication.
         self.assertEqual(req_install.headers['Authorization'], "Bearer jwt.repo.token")
 
+        # Inspection: Second Request (Access Token Exchange)
         req_token = call_token.args[0]
         self.assertEqual(req_token.method, "POST")
+        # Validation: Ensure the Installation ID from the first response is incorporated into the URL.
         self.assertIn("/app/installations/67890/access_tokens", req_token.full_url)
+        # Critical: Ensure the JWT is maintained for the second step.
         self.assertEqual(req_token.headers['Authorization'], "Bearer jwt.repo.token")
 
     @patch('runner.urlopen')
     def test_get_app_installation_token_org_fallback_to_user(self, mock_urlopen):
         """
-        Test Fallback logic: Org 404 -> User 200 -> Token 200.
+        Verify the installation lookup fallback mechanism: if the Organization-level 
+        lookup fails (HTTP 404), the client must automatically attempt a User-level 
+        lookup before proceeding to token exchange.
         """
+        # 1. Configuration: Isolate and mock App Auth to provide a valid JWT.
         self.client.app_auth = MagicMock()
         self.client.app_auth.is_available = True
         self.client.app_auth.generate_jwt.return_value = "jwt.fallback.token"
 
+        # 2. Network Simulation: Define the response sequence.
+
+        # Response 1: Simulate an HTTP 404 Not Found error for the Organization installation lookup.
+        # This triggers the exception handling logic in `_get_app_installation_token`.
         error_404 = HTTPError(
             url="http://gh/orgs/rpmbsys/installation",
             code=404, msg="Not Found", hdrs={}, fp=None
         )
 
-        # Событие 2: Успех при поиске Пользователя
+        # Response 2: Simulate a successful response for the User installation lookup (Fallback target).
         resp_user = MagicMock()
         resp_user.read.return_value = json.dumps({"id": 11111}).encode()
 
         cm_user = MagicMock()
         cm_user.__enter__.return_value = resp_user
 
+        # Response 3: Simulate a successful Token Exchange using the ID retrieved in step 2.
         resp_token = MagicMock()
         resp_token.read.return_value = json.dumps({"token": "ghs_user_final"}).encode()
 
         cm_token = MagicMock()
         cm_token.__enter__.return_value = resp_token
 
+        # Define the sequence of network behaviors: Failure -> Success (Fallback) -> Success (Token).
         mock_urlopen.side_effect = [error_404, cm_user, cm_token]
 
+        # 3. Execution: Initiate the token retrieval workflow.
         token = self.client._get_app_installation_token()
 
+        # 4. Assertion: Verify the final token matches the result of the successful exchange.
         self.assertEqual(token, "ghs_user_final")
 
+        # 5. Low-Level Verification: Confirm the exact sequence of 3 network calls occurred.
         self.assertEqual(mock_urlopen.call_count, 3)
 
+        # Unpack the call history to inspect specific request parameters.
         call_fail, call_success, call_token = mock_urlopen.call_args_list
 
+        # Inspection: First Request (Failed Org Lookup).
+        # Ensure it targeted the Organization endpoint.
         req_fail = call_fail.args[0]
         self.assertIn("/orgs/rpmbsys/installation", req_fail.full_url)
 
+        # Inspection: Second Request (Successful User Lookup).
+        # Verify the fallback logic retargeted the URL to the User endpoint.
         req_success = call_success.args[0]
         self.assertIn("/users/rpmbsys/installation", req_success.full_url)
+        # Ensure the JWT persisted correctly during the retry.
         self.assertEqual(req_success.headers['Authorization'], "Bearer jwt.fallback.token")
 
+        # Inspection: Third Request (Token Exchange).
+        # Verify it used the ID (11111) returned by the user lookup.
         req_token = call_token.args[0]
         self.assertIn("/app/installations/11111/access_tokens", req_token.full_url)
 
     @patch('runner.urlopen')
     def test_get_app_installation_token_repo_no_fallback(self, mock_urlopen):
         """
-        Test that REPO scope causes immediate failure on 404 (No Fallback strategy).
+        Verify that a Repository-scoped configuration adheres to a 'Fail-Fast' strategy.
+        If the installation lookup returns HTTP 404, the client must raise an error immediately
+        without attempting fallback to User scope (which is only valid for Organization URLs).
         """
+        # 1. Configuration: Configure the client with a Repository URL.
+        # This constrains the logic to look exclusively in /repos/ path.
         self.config.github_url = "https://github.com/rpmbsys/docker-rpmbuild"
 
+        # Mock the App Authentication to provide a valid JWT.
         self.client.app_auth = MagicMock()
         self.client.app_auth.is_available = True
         self.client.app_auth.generate_jwt.return_value = "jwt.repo.token"
 
+        # 2. Network Simulation: Simulate an HTTP 404 Not Found error.
+        # This represents the scenario where the GitHub App is not installed on the target repository.
         error_404 = HTTPError(
             url="http://gh/repos/rpmbsys/docker-rpmbuild/installation",
             code=404, msg="Not Found", hdrs={}, fp=None
         )
         mock_urlopen.side_effect = error_404
 
+        # 3. Execution & Assertion:
+        # Verify that the HTTP error triggers a RunnerError exception, halting execution.
         with self.assertRaises(runner.RunnerError):
             self.client._get_app_installation_token()
 
+        # 4. Logic Verification: Assert that exactly one network request was made.
+        # If the call count is > 1, it implies the client incorrectly attempted a fallback,
+        # which would violate the fail-fast requirement for repository scopes.
         self.assertEqual(mock_urlopen.call_count, 1)
 
+        # 5. Request Inspection: Verify the single request targeted the repository endpoint.
         single_call_args = mock_urlopen.call_args
         req = single_call_args.args[0]
 
@@ -609,16 +669,21 @@ class TestGitHubClientAppAuth(unittest.TestCase):
     @patch.object(runner.GitHubClient, '_get_app_installation_token')
     def test_get_token_uses_app_auth_when_available(self, mock_get_app_token, mock_urlopen):
         """
-        Test that get_token retrieves an App Token and puts it into the HTTP Header (Low Level).
+        Verify that `get_token` prioritizes GitHub App Authentication when available.
+        It must retrieve an installation token via the helper method and inject it 
+        into the HTTP Authorization header for the final API request.
         """
-        # 1. Настройка: App Auth доступен
+        # 1. Configuration: Enable App Authentication state.
         self.client.app_auth = MagicMock()
         self.client.app_auth.is_available = True
 
-        # Пусть helper вернет нам промежуточный токен (мы не тестируем здесь сам helper, только его использование)
+        # Mock the internal helper method `_get_app_installation_token`.
+        # We assume the complex handshake logic (tested separately) succeeds and returns
+        # a valid intermediate installation token.
         mock_get_app_token.return_value = "ghs_intermediate_token"
 
-        # 2. Настройка сети для финального запроса (Registration Token)
+        # 2. Network Simulation: Configure the mock response for the final API call
+        # (fetching the Registration Token).
         resp = MagicMock()
         resp.read.return_value = json.dumps({"token": "FINAL_REG_TOKEN"}).encode()
 
@@ -626,17 +691,24 @@ class TestGitHubClientAppAuth(unittest.TestCase):
         cm.__enter__.return_value = resp
         mock_urlopen.return_value = cm
 
+        # 3. Execution: Invoke the token retrieval method.
         token = self.client.get_token("registration")
 
+        # 4. Assertion: Validate the returned token matches the mocked network response.
         self.assertEqual(token, "FINAL_REG_TOKEN")
 
+        # Verify dependency interaction: Ensure the installation token retrieval method was invoked.
         mock_get_app_token.assert_called_once()
 
+        # 5. Low-Level Verification: Inspect the outgoing `urllib.request.Request`.
         self.assertEqual(mock_urlopen.call_count, 1)
         (req, ), _ = mock_urlopen.call_args
 
+        # Validation: Verify the endpoint targets the registration token API.
         self.assertIn("/actions/runners/registration-token", req.full_url)
 
+        # CRITICAL: Verify that the 'Authorization' header carries the Installation Token
+        # (returned by the helper), confirming that the App Auth flow was utilized instead of a PAT.
         self.assertEqual(req.headers['Authorization'], "Bearer ghs_intermediate_token")
 
     @patch('runner.urlopen')
