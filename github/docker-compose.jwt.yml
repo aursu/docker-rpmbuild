@@ -36,6 +36,33 @@ services:
       - /etc/docker/certs.d:/etc/docker/certs.d
       - /var/run/docker.sock:/var/run/docker.sock
       - /etc/docker/tls:/certs/client
+  githubrunnerconfig:
+    image: "ghcr.io/aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
+    command: /usr/local/runner/runner.py configure
+    env_file:
+      - secrets/jwt.env
+      - secrets/github.env
+    secrets:
+      - github_key
+    environment:
+      GITHUB_APP_KEY_PATH: /run/secrets/github_key
+    volumes:
+      - githubrunner:/home/runner
+
+  # Remove/unregister runner
+  # Usage: docker compose run --rm githubrunnerdelete
+  githubrunnerdelete:
+    image: "ghcr.io/aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
+    command: /usr/local/runner/runner.py remove
+    env_file:
+      - secrets/jwt.env
+      - secrets/github.env
+    secrets:
+      - github_key
+    environment:
+      GITHUB_APP_KEY_PATH: /run/secrets/github_key
+    volumes:
+      - githubrunner:/home/runner
 
 volumes:
   githubrunner:
