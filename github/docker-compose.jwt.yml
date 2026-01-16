@@ -16,6 +16,7 @@ services:
     secrets:
       - github_key
     command: /usr/local/runner/tok.py
+  # Usage: docker compose -f github/docker-compose.jwt.yml up -d githubrunner
   githubrunner:
     image: "ghcr.io/aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
     command: /usr/local/runner/runner.py
@@ -36,6 +37,7 @@ services:
       - /etc/docker/certs.d:/etc/docker/certs.d
       - /var/run/docker.sock:/var/run/docker.sock
       - /etc/docker/tls:/certs/client
+  # Usage: docker compose -f github/docker-compose.jwt.yml run --rm githubrunnerconfig
   githubrunnerconfig:
     image: "ghcr.io/aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
     command: /usr/local/runner/runner.py configure
@@ -48,9 +50,8 @@ services:
       GITHUB_APP_KEY_PATH: /run/secrets/github_key
     volumes:
       - githubrunner:/home/runner
-
   # Remove/unregister runner
-  # Usage: docker compose run --rm githubrunnerdelete
+  # Usage: docker compose -f github/docker-compose.jwt.yml run --rm githubrunnerdelete
   githubrunnerdelete:
     image: "ghcr.io/aursu/rockylinux:${RL10TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
     command: /usr/local/runner/runner.py remove
