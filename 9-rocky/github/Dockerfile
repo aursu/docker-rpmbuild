@@ -2,7 +2,7 @@ ARG rocky=9.7.20251123
 ARG image=docker
 FROM ghcr.io/aursu/rpmbuild:${rocky}-${image}
 
-LABEL org.opencontainers.image.source=https://github.com/aursu/docker-rpmbuild
+LABEL org.opencontainers.image.source=https://github.com/aursu/docker-centos
 
 # Replace value with the latest runner release version
 # source: https://github.com/actions/runner/releases
