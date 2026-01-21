@@ -4,7 +4,7 @@ services:
       context: base
       args:
         rocky: $RL9
-    image: "aursu/rpmbuild:${RL9TAG}-base"
+    image: "ghcr.io/aursu/rpmbuild:${RL9TAG}-base"
   rocky9baseroot:
     build:
       context: base
@@ -18,14 +18,15 @@ services:
       dockerfile: Dockerfile.rpmb
       args:
         rocky: $RL9
-    image: "aursu/rpmbuild:${RL9TAG}-rpmb"
+    image: "ghcr.io/aursu/rpmbuild:${RL9TAG}-rpmb"
   rocky9docker:
     build:
       context: build
       dockerfile: Dockerfile.docker
       args:
         rocky: $RL9
-    image: "aursu/rpmbuild:${RL9TAG}-docker"
+        DOCKER_VERSION: $DOCKER
+    image: "ghcr.io/aursu/rpmbuild:${RL9TAG}-docker"
   rocky9rpmbroot:
     build:
       context: build
@@ -47,6 +48,23 @@ services:
         rocky: $RL9
         image: rpmb-root
     image: "aursu/rpmbuild:${RL9TAG}-build-root"
+  rocky9docker2x:
+    build:
+      context: build
+      dockerfile: Dockerfile.docker
+      args:
+        rocky: $RL9
+        DOCKER_VERSION: $DOCKER
+    image: "ghcr.io/aursu/rpmbuild:${RL9TAG}-docker-${DOCKER}"
+  githubrunner:
+    build:
+      context: github
+      args:
+        rocky: $RL9
+        image: docker-${DOCKER}
+        RUNNER_VERSION: $GITHUB_RUNNER_TAG
+        RUNNER_CHECKSUM: $GITHUB_RUNNER_SHA256
+    image: "ghcr.io/aursu/rockylinux:${RL9TAG}-actions-runner-${GITHUB_RUNNER_TAG}"
   rocky9repo:
     restart: always
     volumes:
