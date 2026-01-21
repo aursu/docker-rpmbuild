@@ -32,6 +32,7 @@ services:
       context: build
       dockerfile: Dockerfile.rpmb
       args:
+        repo: aursu/rpmbuild
         rocky: $RL10
         image: base-root
     image: "aursu/rpmbuild:${RL10TAG}-rpmb-root"

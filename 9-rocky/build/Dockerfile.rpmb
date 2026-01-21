@@ -1,6 +1,7 @@
+ARG repo=ghcr.io/aursu/rpmbuild
 ARG rocky=9.7.20251123
 ARG image=base
-FROM ghcr.io/aursu/rpmbuild:${rocky}-${image}
+FROM ${repo}:${rocky}-${image}
 
 LABEL org.opencontainers.image.source=https://github.com/aursu/docker-rpmbuild
 
