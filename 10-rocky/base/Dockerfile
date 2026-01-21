@@ -2,6 +2,8 @@ ARG rocky=10.1.20251126
 ARG image=scm
 FROM ghcr.io/aursu/rockylinux:${rocky}-${image}
 
+LABEL org.opencontainers.image.source=https://github.com/aursu/docker-rpmbuild
+
 ARG builduser=centos
 ARG buildgroup=centos
 ARG buildhome=/home/${builduser}

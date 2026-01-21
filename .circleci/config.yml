@@ -14,10 +14,16 @@ workflows:
           name: rocky9base
           compose_file: 9-rocky/docker-compose.yml
           build_service: rocky9base
+          registry: ghcr.io
+          context:
+            - github-packages
       - docker-rpmbuild/image:
           name: rocky10base
           compose_file: 10-rocky/docker-compose.yml
           build_service: rocky10base
+          registry: ghcr.io
+          context:
+            - github-packages
       - docker-rpmbuild/image:
           name: rocky9baseroot
           compose_file: 9-rocky/docker-compose.yml
@@ -38,12 +44,18 @@ workflows:
           name: rocky9rpmb
           compose_file: 9-rocky/docker-compose.yml
           build_service: rocky9rpmb
+          registry: ghcr.io
+          context:
+            - github-packages
           requires:
             - rocky9base
       - docker-rpmbuild/image:
           name: rocky10rpmb
           compose_file: 10-rocky/docker-compose.yml
           build_service: rocky10rpmb
+          registry: ghcr.io
+          context:
+            - github-packages
           requires:
             - rocky10base
       - docker-rpmbuild/image:
@@ -86,6 +98,9 @@ workflows:
           name: rocky9docker
           compose_file: 9-rocky/docker-compose.yml
           build_service: rocky9docker
+          registry: ghcr.io
+          context:
+            - github-packages
           requires:
             - rocky9rpmb
       - docker-rpmbuild/image:
@@ -98,6 +113,15 @@ workflows:
           requires:
             - rocky10rpmb
       - docker-rpmbuild/image:
+          name: rocky9docker2x
+          compose_file: 9-rocky/docker-compose.yml
+          build_service: rocky9docker2x
+          registry: ghcr.io
+          context:
+            - github-packages
+          requires:
+            - rocky9docker
+      - docker-rpmbuild/image:
           name: rocky10docker2x
           compose_file: 10-rocky/docker-compose.yml
           build_service: rocky10docker2x
@@ -106,6 +130,15 @@ workflows:
             - github-packages
           requires:
             - rocky10docker
+      - docker-rpmbuild/image:
+          name: rocky9github
+          compose_file: 9-rocky/docker-compose.yml
+          build_service: githubrunner
+          registry: ghcr.io
+          context:
+            - github-packages
+          requires:
+            - rocky9docker2x
       - docker-rpmbuild/image:
           name: githubrunnerbase
           compose_file: github/docker-compose.yml
