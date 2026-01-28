@@ -13,8 +13,8 @@ jobs:
     steps:
       - name: Delete untagged images
         uses: actions/delete-package-versions@v5
-        with: 
-          package-name: 'rockylinux'
+        with:
+          package-name: 'rpmbuild'
           package-type: 'container'
           min-versions-to-keep: 0
           delete-only-untagged-versions: 'true'
