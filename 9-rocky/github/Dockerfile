@@ -8,14 +8,14 @@ LABEL org.opencontainers.image.source=https://github.com/aursu/docker-centos
 # source: https://github.com/actions/runner/releases
 # ex: 2.330.0
 ARG RUNNER_ARCH="x64"
-ARG RUNNER_VERSION="2.331.0"
-ARG RUNNER_CHECKSUM=5fcc01bd546ba5c3f1291c2803658ebd3cedb3836489eda3be357d41bfcf28a7
+ARG RUNNER_VERSION="2.333.1"
+ARG RUNNER_CHECKSUM=18f8f68ed1892854ff2ab1bab4fcaa2f5abeedc98093b6cb13638991725cab74
 
 # Replace value with the latest runner-container-hooks release version
 # source: https://github.com/actions/runner-container-hooks/releases
 # ex: 0.8.0
-ARG RUNNER_CONTAINER_HOOKS_VERSION="0.8.0"
-ARG RUNNER_CONTAINER_HOOKS_CHECKSUM=0137e405f346ccbf4f5072e9ef94abd0940728b8f69534063879d899457edac3
+ARG RUNNER_CONTAINER_HOOKS_VERSION="0.8.1"
+ARG RUNNER_CONTAINER_HOOKS_CHECKSUM=2c3c4526f8a8d517373a2a0daa6122d7887bdc465c54945c6d716db87d9d9b4f
 
 ARG DISTRO="actions-runner-linux-${RUNNER_ARCH}-${RUNNER_VERSION}.tar.gz"
 ARG RELEASE_URL="https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/${DISTRO}"
