@@ -1,6 +1,6 @@
 ARG rocky=8.10.20240528
 ARG image=rpmb
-FROM aursu/rpmbuild:${rocky}-${image}
+FROM ghcr.io/aursu/rpmbuild:${rocky}-${image}
 
 # install common build tools (autotools, compilers, parsers etc)
 RUN crb enable \

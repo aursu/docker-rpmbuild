@@ -1,6 +1,6 @@
 ARG rocky=9.7.20251123
 ARG image=rpmb
-FROM aursu/rpmbuild:${rocky}-${image}
+FROM ghcr.io/aursu/rpmbuild:${rocky}-${image}
 
 LABEL org.opencontainers.image.source=https://github.com/aursu/docker-rpmbuild
 

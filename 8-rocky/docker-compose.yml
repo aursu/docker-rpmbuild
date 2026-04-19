@@ -4,7 +4,7 @@ services:
       context: base
       args:
         rocky: $RL8
-    image: "aursu/rpmbuild:${RL8TAG}-base"
+    image: "ghcr.io/aursu/rpmbuild:${RL8TAG}-base"
   rocky8baseroot:
     build:
       context: base
@@ -18,14 +18,14 @@ services:
       dockerfile: Dockerfile.rpmb
       args:
         rocky: $RL8
-    image: "aursu/rpmbuild:${RL8TAG}-rpmb"
+    image: "ghcr.io/aursu/rpmbuild:${RL8TAG}-rpmb"
   rocky8docker:
     build:
       context: build
       dockerfile: Dockerfile.docker
       args:
         rocky: $RL8
-    image: "aursu/rpmbuild:${RL8TAG}-docker"
+    image: "ghcr.io/aursu/rpmbuild:${RL8TAG}-docker"
   rocky8rpmbroot:
     build:
       context: build
