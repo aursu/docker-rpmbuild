@@ -46,6 +46,7 @@ services:
     build:
       context: build
       args:
+        repo: aursu/rpmbuild
         rocky: $RL10
         image: rpmb-root
     image: "aursu/rpmbuild:${RL10TAG}-build-root"

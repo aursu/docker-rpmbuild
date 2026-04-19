@@ -19,6 +19,7 @@ services:
     build:
       context: build
       args:
+        repo: aursu/rpmbuild
         rocky: $RL10
         image: rpmb-systemd
     image: "aursu/rpmbuild:${RL10TAG}-build-systemd"
