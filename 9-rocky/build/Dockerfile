@@ -21,3 +21,5 @@ VOLUME ${BUILD_TOPDIR}/SRPMS ${BUILD_TOPDIR}/RPMS
 
 USER $BUILD_USER
 WORKDIR ${BUILD_TOPDIR}/SPECS
+
+COPY system/home/centos/.rpmmacros /home/centos/.rpmmacros

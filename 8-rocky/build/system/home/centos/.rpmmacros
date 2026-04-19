@@ -1,0 +1,5 @@
+# Disable the generation of the debuginfo subpackage
+%debug_package %{nil}
+
+# Disable the generation of the debugsource subpackage (RHEL 8+, Fedora)
+%_debugsource_template %{nil}
