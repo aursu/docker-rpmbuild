@@ -39,7 +39,7 @@ services:
       context: build
       args:
         rocky: $RL8
-    image: "aursu/rpmbuild:${RL8TAG}-build"
+    image: "ghcr.io/aursu/rpmbuild:${RL8TAG}-build"
   rocky8buildroot:
     build:
       context: build
