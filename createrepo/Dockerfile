@@ -1,4 +1,4 @@
-ARG rocky=10.1.20251126
+ARG rocky=10.2.20260525.0
 FROM aursu/rpmbuild:${rocky}-base
 
 RUN microdnf -y install \

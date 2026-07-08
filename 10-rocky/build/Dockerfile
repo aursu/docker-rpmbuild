@@ -1,5 +1,5 @@
 ARG repo=ghcr.io/aursu/rpmbuild
-ARG rocky=10.1.20251126
+ARG rocky=10.2.20260525.0
 ARG image=rpmb
 FROM ${repo}:${rocky}-${image}
 
