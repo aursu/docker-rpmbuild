@@ -1,5 +1,5 @@
 ARG rocky=10.2.20260525.0
-FROM aursu/rpmbuild:${rocky}-base
+FROM ghcr.io/aursu/rpmbuild:${rocky}-base
 
 RUN microdnf -y install \
 		createrepo_c \
