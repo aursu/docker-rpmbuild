@@ -136,6 +136,7 @@ workflows:
             - github-packages
           requires:
             - rocky9rpmb
+
       - docker-rpmbuild/image:
           name: rocky10docker
           compose_file: 10-rocky/docker-compose.yml
@@ -154,6 +155,24 @@ workflows:
             - github-packages
           requires:
             - rocky9docker
+      - docker-rpmbuild/image:
+          name: rocky9dockerdev
+          compose_file: 9-rocky/docker-compose.yml
+          build_service: rocky9dockerdev
+          registry: ghcr.io
+          context:
+            - github-packages
+          requires:
+            - rocky9docker2x
+      - docker-rpmbuild/image:
+          name: rocky9dockerdev2x
+          compose_file: 9-rocky/docker-compose.yml
+          build_service: rocky9dockerdev2x
+          registry: ghcr.io
+          context:
+            - github-packages
+          requires:
+            - rocky9docker2x
       - docker-rpmbuild/image:
           name: rocky10docker2x
           compose_file: 10-rocky/docker-compose.yml
