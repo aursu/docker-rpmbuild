@@ -30,7 +30,7 @@ services:
   rocky9dockerdev:
     build:
       context: build
-      dockerfile: Dockerfile.docker
+      dockerfile: Dockerfile.dev
       args:
         rocky: $RL9
         image: build
@@ -70,7 +70,7 @@ services:
   rocky9dockerdev2x:
     build:
       context: build
-      dockerfile: Dockerfile.docker
+      dockerfile: Dockerfile.dev
       args:
         rocky: $RL9
         image: build

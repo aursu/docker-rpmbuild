@@ -1,0 +1,22 @@
+ARG rocky=9.8.20260525.0
+ARG image=build
+FROM ghcr.io/aursu/rpmbuild:${rocky}-${image}
+
+LABEL org.opencontainers.image.source=https://github.com/aursu/docker-rpmbuild
+
+ARG DOCKER_VERSION="29.6.0"
+ARG COMPOSE_VERSION="5.2.0"
+
+USER root
+
+# install Docker CLI
+RUN yum-config-manager \
+        --add-repo \
+        https://download.docker.com/linux/centos/docker-ce.repo \
+	&& microdnf -y install \
+	    docker-ce-cli-${DOCKER_VERSION} \
+		docker-compose-plugin-${COMPOSE_VERSION} \
+	&& microdnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
+
+USER $BUILD_USER
+WORKDIR ${BUILD_TOPDIR}/SPECS
