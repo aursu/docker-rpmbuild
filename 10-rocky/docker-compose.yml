@@ -41,7 +41,7 @@ services:
       context: build
       args:
         rocky: $RL10
-    image: "aursu/rpmbuild:${RL10TAG}-build"
+    image: "ghcr.io/aursu/rpmbuild:${RL10TAG}-build"
   rocky10buildroot:
     build:
       context: build
