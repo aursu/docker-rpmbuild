@@ -6,12 +6,26 @@ LABEL org.opencontainers.image.source=https://github.com/aursu/docker-rpmbuild
 
 ARG DOCKER_VERSION="29.7.0"
 ARG COMPOSE_VERSION="5.3.1"
+ARG BUILDX_VERSION="0.36.0"
 
-# install Docker CLI
+# install Docker CLI.
+#
+# buildx is NOT optional here: Compose v2 builds ONLY through buildx, and without the
+# plugin it prints "Docker Compose requires buildx plugin to be installed" and silently
+# falls back to the legacy builder. The fallback then rejects any BuildKit-only
+# Dockerfile syntax — `COPY --chmod=` fails with "the --chmod option requires BuildKit",
+# which is how this was found (httpd-2.4 GitLab CI, 2026-07-31: the frontend image died
+# at step 27/30 while the same build succeeds on macOS/GitHub, where BuildKit is the
+# default).
+#
+# The default `docker` buildx driver uses the DAEMON's built-in BuildKit, so nothing is
+# needed on the daemon side beyond a reasonably modern dockerd — relevant because this
+# image is used docker-OUTSIDE-of-docker, where the daemon is the runner host's.
 RUN yum-config-manager \
         --add-repo \
         https://download.docker.com/linux/centos/docker-ce.repo \
 	&& microdnf -y install \
 	    docker-ce-cli-${DOCKER_VERSION} \
+	    docker-buildx-plugin-${BUILDX_VERSION} \
 		docker-compose-plugin-${COMPOSE_VERSION} \
 	&& microdnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*

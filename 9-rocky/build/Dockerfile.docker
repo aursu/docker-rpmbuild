@@ -6,12 +6,17 @@ LABEL org.opencontainers.image.source=https://github.com/aursu/docker-rpmbuild
 
 ARG DOCKER_VERSION="29.7.0"
 ARG COMPOSE_VERSION="5.3.1"
+ARG BUILDX_VERSION="0.36.0"
 
-# install Docker CLI
+# install Docker CLI. buildx ships alongside compose for the same reason as in
+# Dockerfile.docker-build: Compose v2 builds only through buildx, and without the plugin
+# it falls back to the legacy builder, which rejects BuildKit-only Dockerfile syntax
+# such as `COPY --chmod=`.
 RUN yum-config-manager \
         --add-repo \
         https://download.docker.com/linux/centos/docker-ce.repo \
 	&& microdnf -y install \
 	    docker-ce-cli-${DOCKER_VERSION} \
+	    docker-buildx-plugin-${BUILDX_VERSION} \
 		docker-compose-plugin-${COMPOSE_VERSION} \
 	&& microdnf clean all && rm -rf /var/cache/dnf /var/lib/rpm/__db*
