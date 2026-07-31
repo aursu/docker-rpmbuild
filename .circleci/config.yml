@@ -159,23 +159,23 @@ workflows:
           requires:
             - rocky9docker
       - docker-rpmbuild/image:
-          name: rocky9dockerdev
+          name: rocky9dockerbuild
           compose_file: 9-rocky/docker-compose.yml
-          build_service: rocky9dockerdev
+          build_service: rocky9dockerbuild
           registry: ghcr.io
           context:
             - github-packages
           requires:
-            - rocky9build
+            - rocky9buildroot
       - docker-rpmbuild/image:
-          name: rocky9dockerdev2x
+          name: rocky9dockerbuild2x
           compose_file: 9-rocky/docker-compose.yml
-          build_service: rocky9dockerdev2x
+          build_service: rocky9dockerbuild2x
           registry: ghcr.io
           context:
             - github-packages
           requires:
-            - rocky9dockerdev
+            - rocky9dockerbuild
       - docker-rpmbuild/image:
           name: rocky10docker2x
           compose_file: 10-rocky/docker-compose.yml
@@ -207,6 +207,9 @@ workflows:
           name: rocky9buildroot
           compose_file: 9-rocky/docker-compose.yml
           build_service: rocky9buildroot
+          registry: ghcr.io
+          context:
+            - github-packages
           requires:
             - rocky9rpmbroot
       - docker-rpmbuild/image:

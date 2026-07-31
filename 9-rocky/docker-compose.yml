@@ -27,15 +27,14 @@ services:
         rocky: $RL9
         DOCKER_VERSION: $DOCKER
     image: "ghcr.io/aursu/rpmbuild:${RL9TAG}-docker"
-  rocky9dockerdev:
+  rocky9dockerbuild:
     build:
       context: build
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.docker-build
       args:
         rocky: $RL9
-        image: build
         DOCKER_VERSION: $DOCKER
-    image: "ghcr.io/aursu/rpmbuild:${RL9TAG}-docker-dev"
+    image: "ghcr.io/aursu/rpmbuild:${RL9TAG}-docker-build"
   rocky9rpmbroot:
     build:
       context: build
@@ -58,7 +57,7 @@ services:
         repo: aursu/rpmbuild
         rocky: $RL9
         image: rpmb-root
-    image: "aursu/rpmbuild:${RL9TAG}-build-root"
+    image: "ghcr.io/aursu/rpmbuild:${RL9TAG}-build-root"
   rocky9docker2x:
     build:
       context: build
@@ -67,15 +66,14 @@ services:
         rocky: $RL9
         DOCKER_VERSION: $DOCKER
     image: "ghcr.io/aursu/rpmbuild:${RL9TAG}-docker-${DOCKER}"
-  rocky9dockerdev2x:
+  rocky9dockerbuild2x:
     build:
       context: build
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.docker-build
       args:
         rocky: $RL9
-        image: build
         DOCKER_VERSION: $DOCKER
-    image: "ghcr.io/aursu/rpmbuild:${RL9TAG}-docker-dev-${DOCKER}"
+    image: "ghcr.io/aursu/rpmbuild:${RL9TAG}-docker-build-${DOCKER}"
   githubrunner:
     build:
       context: github
