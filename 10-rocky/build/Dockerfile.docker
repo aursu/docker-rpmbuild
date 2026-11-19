@@ -1,12 +1,12 @@
-ARG rocky=10.2.20260525.0
+ARG rocky=10.3.20261112.0
 ARG image=rpmb
 FROM ghcr.io/aursu/rpmbuild:${rocky}-${image}
 
 LABEL org.opencontainers.image.source=https://github.com/aursu/docker-rpmbuild
 
-ARG DOCKER_VERSION="29.4.0"
-ARG COMPOSE_VERSION="5.1.1"
-ARG BUILDX_VERSION="0.33.0"
+ARG DOCKER_VERSION="29.10.0"
+ARG COMPOSE_VERSION="5.8.0"
+ARG BUILDX_VERSION="0.39.0"
 
 # install Docker CLI
 RUN yum-config-manager \

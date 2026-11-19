@@ -1,4 +1,4 @@
-ARG rocky=10.2.20260525.0
+ARG rocky=10.3.20261112.0
 ARG image=docker
 FROM ghcr.io/aursu/rpmbuild:${rocky}-${image}
 
@@ -8,14 +8,14 @@ LABEL org.opencontainers.image.source=https://github.com/aursu/docker-centos
 # source: https://github.com/actions/runner/releases
 # ex: 2.330.0
 ARG RUNNER_ARCH="x64"
-ARG RUNNER_VERSION="2.335.1"
-ARG RUNNER_CHECKSUM=4ef2f25285f0ae4477f1fe1e346db76d2f3ebf03824e2ddd1973a2819bf6c8cf
+ARG RUNNER_VERSION="2.338.2"
+ARG RUNNER_CHECKSUM=baebf204307bac6193480852732f0aba2ae97b6c5597c244f4d5558390147c40
 
 # Replace value with the latest runner-container-hooks release version
 # source: https://github.com/actions/runner-container-hooks/releases
 # ex: 0.8.0
-ARG RUNNER_CONTAINER_HOOKS_VERSION="0.8.0"
-ARG RUNNER_CONTAINER_HOOKS_CHECKSUM=0137e405f346ccbf4f5072e9ef94abd0940728b8f69534063879d899457edac3
+ARG RUNNER_CONTAINER_HOOKS_VERSION="0.8.1"
+ARG RUNNER_CONTAINER_HOOKS_CHECKSUM=2c3c4526f8a8d517373a2a0daa6122d7887bdc465c54945c6d716db87d9d9b4f
 
 ARG DISTRO="actions-runner-linux-${RUNNER_ARCH}-${RUNNER_VERSION}.tar.gz"
 ARG RELEASE_URL="https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/${DISTRO}"
